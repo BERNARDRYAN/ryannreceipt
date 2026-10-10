@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Courier_Prime, Doto, Geist, Space_Mono } from "next/font/google";
+
+import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import { Toaster } from "@/components/ui/toaster";
 
 import "./globals.css";
@@ -33,6 +35,9 @@ export const metadata: Metadata = {
     template: "%s · RyannReceipt",
   },
   description: "Retro thermal-receipt generator and expense & warranty tracker. Part of the Ryann Suite.",
+  applicationName: "RyannReceipt",
+  appleWebApp: { capable: true, title: "RyannReceipt", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -48,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         {children}
         <Toaster />
+        <RegisterServiceWorker />
       </body>
     </html>
   );
