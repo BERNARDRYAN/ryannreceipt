@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Worker name: the free URL becomes https://ryannreceipt.<your-subdomain>.workers.dev
+  "name": "ryannreceipt",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Edge rate limiting for the BFF (free; counters are per Cloudflare location).
+  // namespace_id is any account-unique integer string you choose.
+  "ratelimits": [
+    { "name": "RL_AUTH", "namespace_id": "4101", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RL_WRITE", "namespace_id": "4102", "simple": { "limit": 60, "period": 60 } },
+    { "name": "RL_READ", "namespace_id": "4103", "simple": { "limit": 120, "period": 60 } }
+  ],
+  "observability": { "enabled": true },
+  // Keep variables set in the Cloudflare dashboard across deploys (secrets are always kept).
+  "keep_vars": true
+}
