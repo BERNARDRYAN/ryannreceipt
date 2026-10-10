@@ -13,6 +13,10 @@
   --danger: #c2341d;
   --success: #2f7d4f;
   --warning: #a86200;
+  /* Charts: accent validated (dataviz) vs #fff; context gray is recessive by design. */
+  --viz-accent: #eb6834;
+  --viz-context: #c3c2b7;
+  --viz-grid: #ebe8e1;
 
   --paper-clean: #faf9f5;
   --paper-aged: #f4f1ea;
@@ -33,6 +37,9 @@
     --danger: #f0735c;
     --success: #6cc08f;
     --warning: #e3a44a;
+    --viz-accent: #d95926;
+    --viz-context: #4a4843;
+    --viz-grid: #2c2c2a;
   }
 }
 
@@ -49,6 +56,9 @@
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-viz-accent: var(--viz-accent);
+  --color-viz-context: var(--viz-context);
+  --color-viz-grid: var(--viz-grid);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-space-mono);
 }
