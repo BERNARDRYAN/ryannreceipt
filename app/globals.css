@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f3f1ec;
+  --surface: #ffffff;
+  --surface-muted: #ebe8e1;
+  --foreground: #1c1b19;
+  --muted: #6b675f;
+  --border: #dcd8cf;
+  --accent: #1c1b19;
+  --accent-contrast: #faf9f5;
+  --desk: #e4e0d7;
+
+  --paper-clean: #faf9f5;
+  --paper-aged: #f4f1ea;
+  --ink: #1a1a1a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #141412;
+    --surface: #1d1c1a;
+    --surface-muted: #262522;
+    --foreground: #eceae4;
+    --muted: #9c978c;
+    --border: #34322e;
+    --accent: #eceae4;
+    --accent-contrast: #141412;
+    --desk: #0e0e0d;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-desk: var(--desk);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-space-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------------------------
+ * Thermal receipt paper
+ * ------------------------------------------------------------------------- */
+
+.receipt-paper {
+  --paper: var(--paper-clean);
+  --tooth: 12px;
+  --pad-x: 18px;
+
+  position: relative;
+  box-sizing: border-box;
+  width: 302px; /* 80mm @ 96dpi */
+  padding: 22px var(--pad-x) 26px;
+  background-color: var(--paper);
+  /* Fine paper grain + a faint vertical sheen from the roll. */
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.025), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.025));
+  color: var(--ink);
+  font-family: var(--font-space-mono), "Courier Prime", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.receipt-paper[data-width="58mm"] {
+  --tooth: 10px;
+  --pad-x: 12px;
+  width: 220px;
+  font-size: 10.5px;
+}
+
+.receipt-paper[data-theme="aged"] {
+  --paper: var(--paper-aged);
+  --ink: #2b2925;
+}
+
+/* Sawtooth tear along top and bottom: two conic-gradient masks, each covering
+ * just over half the height, carve triangular teeth into the edges. */
+.receipt-paper[data-tear] {
+  padding-top: calc(22px + var(--tooth) / 2);
+  padding-bottom: calc(26px + var(--tooth) / 2);
+  -webkit-mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--tooth) 51% repeat-x,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--tooth) 51% repeat-x;
+  mask:
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / var(--tooth) 51% repeat-x,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / var(--tooth) 51% repeat-x;
+}
+
+/* Thermal ink: near-black with a slight horizontal bleed. */
+.receipt-ink {
+  text-shadow: 0.5px 0 0 rgba(0, 0, 0, 0.2);
+}
+
+.receipt-paper[data-dither] .receipt-ink {
+  filter: grayscale(1) contrast(1.35);
+  text-shadow: 0.5px 0 0 rgba(0, 0, 0, 0.35), -0.3px 0 0 rgba(0, 0, 0, 0.15);
+}
+
+.receipt-paper[data-dither]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='d'><feTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='1' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -1.4 .9'/></filter><rect width='100%' height='100%' filter='url(%23d)'/></svg>");
+  opacity: 0.35;
+  mix-blend-mode: screen;
+}
+
+.receipt-title {
+  font-size: 1.45em;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.receipt-divider {
+  overflow: hidden;
+  white-space: nowrap;
+  line-height: 1;
+  letter-spacing: 0;
+  user-select: none;
+}
+
+.receipt-box {
+  border: 1px dashed currentColor;
+  padding: 6px 4px;
+}
+
+/* Soft contact shadow under the paper; lives on a wrapper so the tear mask
+ * doesn't clip it. */
+.receipt-shadow {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.08)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.14));
+}
