@@ -1,11 +1,16 @@
 "use client";
 
-import { LoaderCircle, LogOut } from "lucide-react";
+import { History, LoaderCircle, LogOut, Trash2 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useId, useState } from "react";
 
+import { buttonStyles, Dialog } from "@/components/ui/dialog";
 import type { PublicUser } from "@/lib/auth/public-user";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { useReceiptStore } from "@/lib/store/receipt-store";
+import { toast } from "@/lib/store/toast-store";
+import { deleteAccountData } from "@/lib/sync/cloud";
 
 function Avatar({ user, size }: { user: PublicUser; size: number }) {
   if (user.avatarUrl) {
@@ -32,15 +37,38 @@ function Avatar({ user, size }: { user: PublicUser; size: number }) {
   );
 }
 
+const menuItem =
+  "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-50";
+
 /** Avatar button with a native-popover account menu (light-dismiss + Esc for free). */
 export function UserMenu({ user }: { user: PublicUser }) {
   const signOut = useAuthStore((s) => s.signOut);
+  const clearLibrary = useReceiptStore((s) => s.clearLibrary);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [alsoLocal, setAlsoLocal] = useState(true);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const menuId = useId();
 
   async function handleSignOut() {
     setSigningOut(true);
     await signOut();
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const { deleted } = await deleteAccountData();
+      if (alsoLocal) clearLibrary();
+      setConfirmOpen(false);
+      toast(`Deleted ${deleted.receipts} receipts and ${deleted.presets} presets`, { tone: "success" });
+      await signOut();
+    } catch {
+      toast("Couldn't delete your data. Nothing was removed.", { tone: "error" });
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -66,12 +94,11 @@ export function UserMenu({ user }: { user: PublicUser }) {
           </div>
         </div>
         <div className="my-1 border-t border-border" />
-        <button
-          type="button"
-          onClick={handleSignOut}
-          disabled={signingOut}
-          className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-50"
-        >
+        <Link href="/history" className={menuItem}>
+          <History className="size-4" aria-hidden />
+          History & warranties
+        </Link>
+        <button type="button" onClick={handleSignOut} disabled={signingOut} className={menuItem}>
           {signingOut ? (
             <LoaderCircle className="size-4 animate-spin" aria-hidden />
           ) : (
@@ -79,7 +106,69 @@ export function UserMenu({ user }: { user: PublicUser }) {
           )}
           Sign out
         </button>
+        <div className="my-1 border-t border-border" />
+        <button
+          type="button"
+          onClick={() => {
+            document.getElementById(menuId)?.hidePopover();
+            setConfirmText("");
+            setConfirmOpen(true);
+          }}
+          className={`${menuItem} text-danger`}
+        >
+          <Trash2 className="size-4" aria-hidden />
+          Delete my RyannReceipt data
+        </button>
       </div>
+
+      <Dialog
+        open={confirmOpen}
+        onClose={() => !deleting && setConfirmOpen(false)}
+        title="Delete your RyannReceipt data?"
+        description={
+          <>
+            This permanently deletes every receipt and preset in your RyannReceipt cloud account. Your Ryann Suite
+            sign-in (used by RyannPace and RyannPlan) is not affected. This can&apos;t be undone.
+          </>
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(false)}
+              className={buttonStyles.ghost}
+              disabled={deleting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className={buttonStyles.danger}
+              disabled={deleting || confirmText !== "DELETE"}
+            >
+              {deleting && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
+              Delete everything
+            </button>
+          </>
+        }
+      >
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={alsoLocal} onChange={(e) => setAlsoLocal(e.target.checked)} />
+          Also clear drafts saved on this device
+        </label>
+        <label className="block space-y-1 text-sm">
+          <span className="text-muted">
+            Type <strong className="font-mono text-foreground">DELETE</strong> to confirm
+          </span>
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            autoComplete="off"
+            className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-sm outline-none focus:border-foreground/60"
+          />
+        </label>
+      </Dialog>
     </>
   );
 }

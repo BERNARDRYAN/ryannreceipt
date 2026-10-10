@@ -55,7 +55,7 @@ function jsonError(message: string, status: number, headers: HeadersInit = {}) {
 }
 
 export async function GET(request: NextRequest) {
-  const limit = rateLimit(`gis-nonce:${clientIp(request.headers)}`, 30);
+  const limit = await rateLimit(`gis-nonce:${clientIp(request.headers)}`, 30);
   if (!limit.ok) return jsonError("Too many requests", 429);
 
   const cookieStore = await cookies();
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request.headers)) return jsonError("Forbidden", 403);
 
-  const limit = rateLimit(`gis-token:${clientIp(request.headers)}`, 10);
+  const limit = await rateLimit(`gis-token:${clientIp(request.headers)}`, 10);
   if (!limit.ok) {
     const retryAfter = Math.ceil((limit.resetAt - Date.now()) / 1000);
     return jsonError("Too many requests", 429, { "Retry-After": String(retryAfter) });

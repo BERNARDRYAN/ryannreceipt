@@ -60,8 +60,10 @@ export function GoogleAuthButton() {
           itp_support: true,
           use_fedcm_for_button: true,
         });
+        // Icon-only on phones, where the studio header is tight.
+        const compact = window.matchMedia("(max-width: 639px)").matches;
         gis.renderButton(containerRef.current, {
-          type: "standard",
+          type: compact ? "icon" : "standard",
           theme: "outline",
           size: "medium",
           text: "signin",
@@ -107,12 +109,12 @@ export function GoogleAuthButton() {
     <div className="flex items-center gap-2">
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onReady={() => setGisReady(true)} />
       {error && (
-        <span role="alert" className="hidden text-xs text-red-600 md:inline dark:text-red-400">
+        <span role="alert" className="hidden text-xs text-danger lg:inline">
           {error}
         </span>
       )}
       {/* Fixed height keeps the header steady while Google renders its iframe. */}
-      <div ref={containerRef} className="flex h-8 min-w-22 items-center" />
+      <div ref={containerRef} className="flex h-8 min-w-8 items-center sm:min-w-22" />
     </div>
   );
 }

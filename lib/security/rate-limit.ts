@@ -4,11 +4,13 @@ type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
 
+export type RateLimitResult = { ok: boolean; remaining: number; resetAt: number };
+
 /**
  * Fixed-window, in-memory rate limiter. Per-instance only: swap for a KV/Redis
  * store when running on multiple instances or on Workers.
  */
-export function rateLimit(key: string, limit = 60, windowMs = 60_000) {
+export async function rateLimit(key: string, limit = 60, windowMs = 60_000): Promise<RateLimitResult> {
   const now = Date.now();
   const bucket = buckets.get(key);
 

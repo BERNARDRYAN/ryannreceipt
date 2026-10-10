@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Space_Mono } from "next/font/google";
+import { Courier_Prime, Doto, Geist, Space_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/toaster";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,6 +13,18 @@ const spaceMono = Space_Mono({
   variable: "--font-space-mono",
   subsets: ["latin"],
   weight: ["400", "700"],
+});
+
+const courierPrime = Courier_Prime({
+  variable: "--font-courier-prime",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const doto = Doto({
+  variable: "--font-doto",
+  subsets: ["latin"],
+  weight: ["700", "900"],
 });
 
 export const metadata: Metadata = {
@@ -30,8 +44,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${spaceMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">{children}</body>
+    <html lang="en" className={`${geistSans.variable} ${spaceMono.variable} ${courierPrime.variable} ${doto.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

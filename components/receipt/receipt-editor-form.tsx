@@ -1,14 +1,20 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { Bookmark } from "lucide-react";
+import { useState } from "react";
 
-import { useReceiptStore } from "@/lib/store/receipt-store";
-import { computeTotals, formatAmount } from "@/lib/utils/currency";
+import { Field, inputClass, NumberInput, Section, Segmented, Toggle } from "@/components/receipt/editor/fields";
+import { ItemsEditor } from "@/components/receipt/editor/items-editor";
+import { LogoField } from "@/components/receipt/editor/logo-field";
+import { PresetsDialog } from "@/components/receipt/editor/presets-dialog";
+import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
+import { computeTotals, currencyDecimals, formatAmount } from "@/lib/utils/currency";
 import {
   CATEGORIES,
   CURRENCIES,
+  ORDER_TYPES,
   PAYMENT_METHODS,
+  TAX_LABELS,
   type ReceiptStyle,
 } from "@/lib/validators/receipt-schema";
 
@@ -16,135 +22,54 @@ type BooleanStyleKey = {
   [K in keyof ReceiptStyle]: ReceiptStyle[K] extends boolean ? K : never;
 }[keyof ReceiptStyle];
 
-const inputClass =
-  "w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted/70 focus:border-foreground/60 focus-visible:ring-2 focus-visible:ring-foreground/15";
-
-function clampNumber(raw: string, min: number, max: number, integer = false) {
-  const n = integer ? Math.trunc(Number(raw)) : Number(raw);
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, n));
-}
-
-function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+function SummaryRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <section className="space-y-3 border-b border-border px-5 py-5 last:border-b-0">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Field({
-  label,
-  children,
-  className = "",
-}: {
-  label: string;
-  children: (id: string) => ReactNode;
-  className?: string;
-}) {
-  const id = useId();
-  return (
-    <div className={`space-y-1 ${className}`}>
-      <label htmlFor={id} className="block text-xs font-medium text-muted">
-        {label}
-      </label>
-      {children(id)}
-    </div>
-  );
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 py-1 text-sm">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        role="switch"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="peer sr-only"
-      />
-      <span
-        aria-hidden
-        className="relative h-5 w-9 shrink-0 rounded-full bg-surface-muted ring-1 ring-border transition-colors after:absolute after:top-0.5 after:left-0.5 after:size-4 after:rounded-full after:bg-surface after:shadow-sm after:transition-transform peer-checked:bg-accent peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-foreground/30"
-      />
-    </label>
-  );
-}
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: readonly { value: T; label: string }[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <span className="block text-xs font-medium text-muted">{label}</span>
-      <div role="radiogroup" aria-label={label} className="flex rounded-md bg-surface-muted p-0.5">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={value === option.value}
-            onClick={() => onChange(option.value)}
-            className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-              value === option.value ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+    <div className={`flex justify-between ${strong ? "font-semibold" : "text-muted"}`}>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }
 
 export function ReceiptEditorForm() {
-  const draft = useReceiptStore((s) => s.draft);
+  const draft = useActiveDraft();
   const setField = useReceiptStore((s) => s.setField);
   const setStyle = useReceiptStore((s) => s.setStyle);
-  const addItem = useReceiptStore((s) => s.addItem);
-  const updateItem = useReceiptStore((s) => s.updateItem);
-  const removeItem = useReceiptStore((s) => s.removeItem);
+  const [presetsOpen, setPresetsOpen] = useState(false);
 
-  const { subtotal, discount, taxAmount, total } = computeTotals(
-    draft.items,
-    draft.taxRate,
-    draft.discountAmount,
-    draft.currency,
-  );
+  if (!draft) return null;
+
+  const t = computeTotals(draft);
+  const decimals = currencyDecimals(draft.currency);
   const money = (n: number) => `${draft.currency} ${formatAmount(n, draft.currency)}`;
   const style = draft.styleConfig;
   const toggle = (key: BooleanStyleKey) => (checked: boolean) => setStyle(key, checked);
+  const isCash = draft.paymentMethod === "CASH";
+  const quickTender = [t.payable, ...[10, 20, 50, 100].filter((n) => n > t.payable)].slice(0, 4);
 
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="text-foreground">
-      <Section title="Merchant">
+    <div className="text-foreground">
+      <Section
+        title="Merchant"
+        action={
+          <button
+            type="button"
+            onClick={() => setPresetsOpen(true)}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium hover:bg-surface-muted"
+          >
+            <Bookmark className="size-3.5" aria-hidden />
+            Presets
+          </button>
+        }
+      >
+        <LogoField value={style.logo} onChange={(logo) => setStyle("logo", logo)} />
         <Field label="Store name">
           {(id) => (
             <input
               id={id}
               className={inputClass}
               maxLength={60}
+              placeholder="e.g. Ryann Kopitiam"
               value={draft.merchantName}
               onChange={(e) => setField("merchantName", e.target.value)}
             />
@@ -212,6 +137,44 @@ export function ReceiptEditorForm() {
               />
             )}
           </Field>
+          <Field label="Cashier">
+            {(id) => (
+              <input
+                id={id}
+                className={inputClass}
+                maxLength={32}
+                value={draft.cashier}
+                onChange={(e) => setField("cashier", e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Table">
+            {(id) => (
+              <input
+                id={id}
+                className={inputClass}
+                maxLength={12}
+                value={draft.tableNo}
+                onChange={(e) => setField("tableNo", e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="Order type">
+            {(id) => (
+              <select
+                id={id}
+                className={inputClass}
+                value={draft.orderType}
+                onChange={(e) => setField("orderType", e.target.value as (typeof ORDER_TYPES)[number])}
+              >
+                {ORDER_TYPES.map((o) => (
+                  <option key={o} value={o}>
+                    {o || "None"}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
           <Field label="Currency">
             {(id) => (
               <select
@@ -226,21 +189,7 @@ export function ReceiptEditorForm() {
               </select>
             )}
           </Field>
-          <Field label="Payment">
-            {(id) => (
-              <select
-                id={id}
-                className={inputClass}
-                value={draft.paymentMethod}
-                onChange={(e) => setField("paymentMethod", e.target.value as (typeof PAYMENT_METHODS)[number])}
-              >
-                {PAYMENT_METHODS.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
-            )}
-          </Field>
-          <Field label="Category" className="col-span-2">
+          <Field label="Category" className="col-span-2" hint="Used for spending summaries in History.">
             {(id) => (
               <select
                 id={id}
@@ -257,125 +206,135 @@ export function ReceiptEditorForm() {
         </div>
       </Section>
 
-      <Section
-        title={`Items (${draft.items.length})`}
-        action={
-          <button
-            type="button"
-            onClick={addItem}
-            disabled={draft.items.length >= 100}
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-muted disabled:opacity-40"
-          >
-            <Plus className="size-3.5" aria-hidden />
-            Add item
-          </button>
-        }
-      >
-        {draft.items.length === 0 && (
-          <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-sm text-muted">
-            No items yet.
-          </p>
-        )}
-        <ul className="space-y-2">
-          {draft.items.map((item, index) => (
-            <li key={item.id} className="grid grid-cols-[1fr_4rem_5.5rem_auto] items-center gap-1.5">
-              <input
-                aria-label={`Item ${index + 1} name`}
-                placeholder="Item name"
-                className={inputClass}
-                maxLength={80}
-                value={item.name}
-                onChange={(e) => updateItem(item.id, { name: e.target.value })}
-              />
-              <input
-                aria-label={`Item ${index + 1} quantity`}
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={9999}
-                step={1}
-                className={`${inputClass} text-right tabular-nums`}
-                value={item.qty}
-                onChange={(e) => updateItem(item.id, { qty: clampNumber(e.target.value, 0, 9999, true) })}
-              />
-              <input
-                aria-label={`Item ${index + 1} unit price`}
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.01}
-                className={`${inputClass} text-right tabular-nums`}
-                value={item.price}
-                onChange={(e) => updateItem(item.id, { price: clampNumber(e.target.value, 0, 1_000_000) })}
-              />
-              <button
-                type="button"
-                onClick={() => removeItem(item.id)}
-                aria-label={`Remove item ${index + 1}`}
-                className="rounded-md p-1.5 text-muted hover:bg-surface-muted hover:text-foreground"
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Section>
+      <ItemsEditor />
 
-      <Section title="Totals">
+      <Section title="Charges & tax">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Tax rate (%)">
+          <Field label={`Discount (${draft.currency})`}>
             {(id) => (
-              <input
+              <NumberInput
                 id={id}
-                type="number"
-                inputMode="decimal"
-                min={0}
-                max={100}
-                step={0.5}
-                className={`${inputClass} tabular-nums`}
-                value={draft.taxRate}
-                onChange={(e) => setField("taxRate", clampNumber(e.target.value, 0, 100))}
+                decimals={decimals}
+                max={1_000_000_000}
+                value={draft.discountAmount}
+                onValueChange={(v) => setField("discountAmount", v)}
               />
             )}
           </Field>
-          <Field label={`Discount (${draft.currency})`}>
+          <Field label="Service charge (%)">
             {(id) => (
-              <input
+              <NumberInput
                 id={id}
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.01}
-                className={`${inputClass} tabular-nums`}
-                value={draft.discountAmount}
-                onChange={(e) => setField("discountAmount", clampNumber(e.target.value, 0, 1_000_000_000))}
+                max={100}
+                value={draft.serviceChargeRate}
+                onValueChange={(v) => setField("serviceChargeRate", v)}
               />
+            )}
+          </Field>
+          <Field label="Tax label">
+            {(id) => (
+              <select
+                id={id}
+                className={inputClass}
+                value={draft.taxLabel}
+                onChange={(e) => setField("taxLabel", e.target.value as (typeof TAX_LABELS)[number])}
+              >
+                {TAX_LABELS.map((l) => (
+                  <option key={l}>{l}</option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <Field label="Tax rate (%)">
+            {(id) => (
+              <NumberInput id={id} max={100} value={draft.taxRate} onValueChange={(v) => setField("taxRate", v)} />
             )}
           </Field>
         </div>
-        <dl className="space-y-1 rounded-md bg-surface-muted px-3 py-2.5 text-sm tabular-nums">
-          <div className="flex justify-between text-muted">
-            <dt>Subtotal</dt>
-            <dd>{money(subtotal)}</dd>
-          </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-muted">
-              <dt>Discount</dt>
-              <dd>-{money(discount)}</dd>
-            </div>
+        <Toggle
+          label="Prices include tax"
+          description="Tax is shown as included instead of added on top."
+          checked={draft.taxInclusive}
+          onChange={(v) => setField("taxInclusive", v)}
+        />
+      </Section>
+
+      <Section title="Payment">
+        <Field label="Payment method">
+          {(id) => (
+            <select
+              id={id}
+              className={inputClass}
+              value={draft.paymentMethod}
+              onChange={(e) => setField("paymentMethod", e.target.value as (typeof PAYMENT_METHODS)[number])}
+            >
+              {PAYMENT_METHODS.map((p) => (
+                <option key={p}>{p}</option>
+              ))}
+            </select>
           )}
-          <div className="flex justify-between text-muted">
-            <dt>Tax</dt>
-            <dd>{money(taxAmount)}</dd>
-          </div>
-          <div className="flex justify-between font-semibold">
-            <dt>Total</dt>
-            <dd>{money(total)}</dd>
-          </div>
+        </Field>
+        {isCash && (
+          <>
+            {decimals === 2 && (
+              <Toggle
+                label="Round to nearest 0.05"
+                description="Malaysian cash rounding (1–2 sen down, 3–4 up)."
+                checked={draft.roundCash}
+                onChange={(v) => setField("roundCash", v)}
+              />
+            )}
+            <Field label={`Cash tendered (${draft.currency})`}>
+              {(id) => (
+                <NumberInput
+                  id={id}
+                  decimals={decimals}
+                  max={1_000_000_000}
+                  value={draft.amountTendered}
+                  onValueChange={(v) => setField("amountTendered", v)}
+                />
+              )}
+            </Field>
+            <div className="flex flex-wrap gap-1.5">
+              {quickTender.map((amount, i) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setField("amountTendered", amount)}
+                  className="rounded-full px-2.5 py-1 text-xs font-medium tabular-nums ring-1 ring-border hover:bg-surface-muted"
+                >
+                  {i === 0 ? "Exact" : formatAmount(amount, draft.currency)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        <dl className="space-y-1 rounded-md bg-surface-muted px-3 py-2.5 text-sm tabular-nums">
+          <SummaryRow label="Subtotal" value={money(t.subtotal)} />
+          {t.discount > 0 && <SummaryRow label="Discount" value={`-${money(t.discount)}`} />}
+          {t.serviceCharge > 0 && <SummaryRow label="Service charge" value={money(t.serviceCharge)} />}
+          {t.taxAmount > 0 && (
+            <SummaryRow
+              label={`${draft.taxLabel}${draft.taxInclusive ? " (included)" : ""}`}
+              value={money(t.taxAmount)}
+            />
+          )}
+          {t.rounding !== 0 && <SummaryRow label="Rounding" value={money(t.rounding)} />}
+          <SummaryRow label="Total" value={money(t.payable)} strong />
+          {isCash && t.tendered > 0 && (
+            <>
+              <SummaryRow label="Tendered" value={money(t.tendered)} />
+              <SummaryRow
+                label={t.tendered < t.payable ? "Short by" : "Change"}
+                value={money(t.tendered < t.payable ? t.payable - t.tendered : t.change)}
+                strong
+              />
+            </>
+          )}
         </dl>
       </Section>
 
-      <Section title="Footer & warranty">
+      <Section title="Footer, codes & warranty">
         <Field label="Footer note">
           {(id) => (
             <textarea
@@ -400,7 +359,7 @@ export function ReceiptEditorForm() {
               />
             )}
           </Field>
-          <Field label="Warranty until">
+          <Field label="Warranty until" hint="Tracked in History.">
             {(id) => (
               <input
                 id={id}
@@ -426,7 +385,7 @@ export function ReceiptEditorForm() {
         </div>
       </Section>
 
-      <Section title="Paper">
+      <Section title="Paper & print">
         <div className="grid grid-cols-2 gap-3">
           <Segmented
             label="Roll width"
@@ -438,15 +397,27 @@ export function ReceiptEditorForm() {
             onChange={(v) => setStyle("width", v)}
           />
           <Segmented
-            label="Paper"
-            value={style.paperTheme}
+            label="Typeface"
+            value={style.fontFamily}
             options={[
-              { value: "clean", label: "Clean" },
-              { value: "aged", label: "Aged" },
+              { value: "mono", label: "Mono" },
+              { value: "typewriter", label: "Type" },
+              { value: "dotmatrix", label: "Dots" },
             ]}
-            onChange={(v) => setStyle("paperTheme", v)}
+            onChange={(v) => setStyle("fontFamily", v)}
           />
         </div>
+        <Segmented
+          label="Paper"
+          value={style.paperTheme}
+          options={[
+            { value: "clean", label: "Clean" },
+            { value: "aged", label: "Aged" },
+            { value: "pink", label: "Pink" },
+            { value: "blue", label: "Blue" },
+          ]}
+          onChange={(v) => setStyle("paperTheme", v)}
+        />
         <div className="divide-y divide-border">
           <Toggle label="Barcode" checked={style.showBarcode} onChange={toggle("showBarcode")} />
           <Toggle label="QR code" checked={style.showQr} onChange={toggle("showQr")} />
@@ -454,6 +425,8 @@ export function ReceiptEditorForm() {
           <Toggle label="Thermal grain" checked={style.monochromeDither} onChange={toggle("monochromeDither")} />
         </div>
       </Section>
-    </form>
+
+      <PresetsDialog open={presetsOpen} onClose={() => setPresetsOpen(false)} />
+    </div>
   );
 }

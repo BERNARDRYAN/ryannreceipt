@@ -10,6 +10,9 @@
   --accent: #1c1b19;
   --accent-contrast: #faf9f5;
   --desk: #e4e0d7;
+  --danger: #c2341d;
+  --success: #2f7d4f;
+  --warning: #a86200;
 
   --paper-clean: #faf9f5;
   --paper-aged: #f4f1ea;
@@ -27,6 +30,9 @@
     --accent: #eceae4;
     --accent-contrast: #141412;
     --desk: #0e0e0d;
+    --danger: #f0735c;
+    --success: #6cc08f;
+    --warning: #e3a44a;
   }
 }
 
@@ -40,6 +46,9 @@
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
   --color-desk: var(--desk);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-space-mono);
 }
@@ -56,6 +65,8 @@ body {
 
 .receipt-paper {
   --paper: var(--paper-clean);
+  --receipt-font: var(--font-space-mono), "Courier Prime", ui-monospace, monospace;
+  --receipt-font-scale: 1;
   --tooth: 12px;
   --pad-x: 18px;
 
@@ -69,8 +80,8 @@ body {
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
     linear-gradient(90deg, rgba(0, 0, 0, 0.025), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.025));
   color: var(--ink);
-  font-family: var(--font-space-mono), "Courier Prime", ui-monospace, monospace;
-  font-size: 12px;
+  font-family: var(--receipt-font);
+  font-size: calc(12px * var(--receipt-font-scale));
   line-height: 1.45;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -80,12 +91,34 @@ body {
   --tooth: 10px;
   --pad-x: 12px;
   width: 220px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--receipt-font-scale));
+}
+
+.receipt-paper[data-font="typewriter"] {
+  --receipt-font: var(--font-courier-prime), "Courier New", ui-monospace, monospace;
+  --receipt-font-scale: 1.04;
+}
+
+.receipt-paper[data-font="dotmatrix"] {
+  --receipt-font: var(--font-doto), ui-monospace, monospace;
+  --receipt-font-scale: 1.08;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .receipt-paper[data-theme="aged"] {
   --paper: var(--paper-aged);
   --ink: #2b2925;
+}
+
+.receipt-paper[data-theme="pink"] {
+  --paper: #fbeef0;
+  --ink: #2a1f22;
+}
+
+.receipt-paper[data-theme="blue"] {
+  --paper: #edf2f8;
+  --ink: #1b2330;
 }
 
 /* Sawtooth tear along top and bottom: two conic-gradient masks, each covering
@@ -129,12 +162,32 @@ body {
   text-transform: uppercase;
 }
 
+/* Dashed rules drawn as one dash per character cell; `round` fits a whole
+ * number of dashes to the width, so no glyph is ever cut off at the edge. */
 .receipt-divider {
-  overflow: hidden;
-  white-space: nowrap;
-  line-height: 1;
-  letter-spacing: 0;
-  user-select: none;
+  height: 1lh;
+  background-image: linear-gradient(90deg, currentColor 62%, transparent 62%);
+  background-size: 1ch 1px;
+  background-repeat: round no-repeat;
+  background-position: center;
+  opacity: 0.9;
+}
+
+.receipt-divider[data-double] {
+  background-image:
+    linear-gradient(90deg, currentColor 62%, transparent 62%),
+    linear-gradient(90deg, currentColor 62%, transparent 62%);
+  background-size: 1ch 1px, 1ch 1px;
+  background-repeat: round no-repeat, round no-repeat;
+  background-position: center calc(50% - 1.5px), center calc(50% + 1.5px);
+}
+
+.receipt-logo {
+  display: block;
+  margin: 0 auto 6px;
+  max-width: 62%;
+  max-height: 96px;
+  image-rendering: pixelated;
 }
 
 .receipt-box {
@@ -146,4 +199,28 @@ body {
  * doesn't clip it. */
 .receipt-shadow {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.08)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.14));
+}
+
+/* ---------------------------------------------------------------------------
+ * Print: only the receipt, at the roll's physical width. The studio injects an
+ * exact `@page` size before calling window.print().
+ * ------------------------------------------------------------------------- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-print-root],
+  [data-print-root] * {
+    visibility: visible;
+  }
+  [data-print-root] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    zoom: 1 !important;
+    filter: none !important;
+  }
+  .receipt-paper {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

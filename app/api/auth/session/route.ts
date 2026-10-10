@@ -12,7 +12,7 @@ const noStore = { "Cache-Control": "no-store" };
  * cookies on this response.
  */
 export async function GET(request: NextRequest) {
-  const limit = rateLimit(`session:${clientIp(request.headers)}`, 120);
+  const limit = await rateLimit(`session:${clientIp(request.headers)}`, 120);
   if (!limit.ok) return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: noStore });
 
   const supabase = await createClient();
