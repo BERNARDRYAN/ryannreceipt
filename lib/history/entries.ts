@@ -60,11 +60,16 @@ export function sortEntries(entries: HistoryEntry[]) {
 
 export const monthKey = (date: string) => date.slice(0, 7);
 
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-export function monthLabel(key: string, long = false) {
+/** "Oct" / "Oct 2026" (or 10月 / 2026年10月, Okt 2026) for a `YYYY-MM` key. */
+export function monthLabel(key: string, long = false, intlLocale = "en-MY") {
   const [y, m] = key.split("-").map(Number);
-  const name = MONTH_NAMES[m - 1] ?? key;
-  return long ? `${name} ${y}` : name;
+  if (!y || !m) return key;
+  const date = new Date(Date.UTC(y, m - 1, 1));
+  return new Intl.DateTimeFormat(intlLocale, {
+    month: "short",
+    ...(long && { year: "numeric" }),
+    timeZone: "UTC",
+  }).format(date);
 }
 
 /** The `count` months ending at `endKey` (inclusive), oldest first. */

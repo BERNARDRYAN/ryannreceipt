@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowUpRight, Table2, BarChart3 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { monthLabel } from "@/lib/history/entries";
+import { INTL_LOCALE, useLocale, useT, type MessageKey } from "@/lib/i18n/messages";
 import { formatAmount } from "@/lib/utils/currency";
 import type { Currency } from "@/lib/validators/receipt-schema";
 
@@ -21,23 +22,53 @@ function niceMax(value: number) {
   return step * exp;
 }
 
+/** Month names in the UI language. */
+export function useMonthLabel() {
+  const locale = useLocale();
+  return (key: string, long = false) => monthLabel(key, long, INTL_LOCALE[locale]);
+}
+
+/** Budget meter: the fill carries severity (accent -> warning -> danger) on a same-ramp track. */
+function Meter({ pct }: { pct: number }) {
+  const tone = pct > 100 ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-viz-accent";
+  return (
+    <div
+      className="mt-3 h-1.5 overflow-hidden rounded-full bg-viz-grid"
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.min(100, Math.round(pct))}
+    >
+      <div className={`h-full rounded-full transition-[width] duration-500 ${tone}`} style={{ width: `${Math.min(100, pct)}%` }} />
+    </div>
+  );
+}
+
 export function StatTile({
   label,
   value,
   sub,
   delta,
+  meter,
+  action,
 }: {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
   /** Signed change vs a named period; for spending, up is bad. */
   delta?: { value: number; label: string; upIsGood?: boolean };
+  /** Optional progress against a limit, in percent. */
+  meter?: number;
+  action?: ReactNode;
 }) {
   const up = delta && delta.value > 0;
   const good = delta && (delta.upIsGood ? up : !up);
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="text-xs font-medium text-muted">{label}</p>
+    <div className="rounded-2xl border border-border bg-surface p-4">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium text-muted">{label}</p>
+        {action}
+      </div>
       <p className="mt-1.5 text-2xl font-semibold tracking-tight">{value}</p>
       {delta && delta.value !== 0 && (
         <p className={`mt-1 inline-flex items-center gap-1 text-xs ${good ? "text-success" : "text-danger"}`}>
@@ -45,7 +76,8 @@ export function StatTile({
           {delta.label}
         </p>
       )}
-      {sub && <p className="mt-1 text-xs text-muted">{sub}</p>}
+      {meter !== undefined && <Meter pct={meter} />}
+      {sub && <p className="mt-1.5 text-xs text-muted">{sub}</p>}
     </div>
   );
 }
@@ -68,17 +100,19 @@ export function MonthlyChart({
   selected: string;
   onSelect: (key: string) => void;
 }) {
+  const t = useT();
+  const ml = useMonthLabel();
   const [hover, setHover] = useState<number | null>(null);
   const [asTable, setAsTable] = useState(false);
   const max = niceMax(Math.max(...data.map((d) => d.total)));
   const ticks = [max, max / 2, 0];
 
   return (
-    <figure className="rounded-xl border border-border bg-surface p-4">
+    <figure className="rounded-2xl border border-border bg-surface p-4">
       <figcaption className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">Monthly spend</p>
-          <p className="text-xs text-muted">Last {data.length} months · {currency} · select a month to filter</p>
+          <p className="text-sm font-semibold">{t("chart.monthly")}</p>
+          <p className="text-xs text-muted">{t("chart.monthlySub", { n: data.length, currency })}</p>
         </div>
         <button
           type="button"
@@ -87,7 +121,7 @@ export function MonthlyChart({
           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-muted hover:text-foreground"
         >
           {asTable ? <BarChart3 className="size-3.5" aria-hidden /> : <Table2 className="size-3.5" aria-hidden />}
-          {asTable ? "Chart" : "Table"}
+          {asTable ? t("chart.chart") : t("chart.table")}
         </button>
       </figcaption>
 
@@ -95,9 +129,9 @@ export function MonthlyChart({
         <table className="w-full text-sm tabular-nums">
           <thead>
             <tr className="text-left text-xs text-muted">
-              <th className="py-1 font-medium">Month</th>
-              <th className="py-1 text-right font-medium">Receipts</th>
-              <th className="py-1 text-right font-medium">Spent ({currency})</th>
+              <th className="py-1 font-medium">{t("chart.month")}</th>
+              <th className="py-1 text-right font-medium">{t("chart.receipts")}</th>
+              <th className="py-1 text-right font-medium">{t("chart.spent", { currency })}</th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +139,7 @@ export function MonthlyChart({
               <tr key={d.key} className="border-t border-border">
                 <td className="py-1.5">
                   <button type="button" onClick={() => onSelect(d.key)} className="hover:underline">
-                    {monthLabel(d.key, true)}
+                    {ml(d.key, true)}
                   </button>
                 </td>
                 <td className="py-1.5 text-right">{d.count}</td>
@@ -148,7 +182,7 @@ export function MonthlyChart({
                     onFocus={() => setHover(i)}
                     onBlur={() => setHover(null)}
                     aria-pressed={isSel}
-                    aria-label={`${monthLabel(d.key, true)}: ${currency} ${formatAmount(d.total, currency)}, ${d.count} receipts`}
+                    aria-label={`${ml(d.key, true)}: ${currency} ${formatAmount(d.total, currency)}, ${t("chart.receiptCount", { count: d.count })}`}
                     className="group relative flex h-full flex-1 items-end justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-foreground/30"
                   >
                     {isSel && d.total > 0 && (
@@ -176,7 +210,7 @@ export function MonthlyChart({
                           {currency} {formatAmount(d.total, currency)}
                         </span>
                         <span className="block text-[11px] text-muted">
-                          {monthLabel(d.key, true)} · {d.count} receipt{d.count === 1 ? "" : "s"}
+                          {ml(d.key, true)} · {t("chart.receiptCount", { count: d.count })}
                         </span>
                       </span>
                     )}
@@ -192,7 +226,7 @@ export function MonthlyChart({
                 key={d.key}
                 className={`flex-1 text-center ${d.key === selected ? "font-semibold text-foreground" : ""}`}
               >
-                {monthLabel(d.key)}
+                {ml(d.key)}
               </span>
             ))}
           </div>
@@ -219,19 +253,18 @@ export function CategoryBars({
   activeCategory: string;
   onSelect: (category: string) => void;
 }) {
+  const t = useT();
   const sum = data.reduce((s, d) => s + d.total, 0);
   const max = Math.max(...data.map((d) => d.total), 0);
 
   return (
-    <figure className="rounded-xl border border-border bg-surface p-4">
+    <figure className="rounded-2xl border border-border bg-surface p-4">
       <figcaption className="mb-4">
-        <p className="text-sm font-semibold">By category</p>
-        <p className="text-xs text-muted">
-          {monthName} · {currency} · select a category to filter
-        </p>
+        <p className="text-sm font-semibold">{t("chart.byCategory")}</p>
+        <p className="text-xs text-muted">{t("chart.byCategorySub", { month: monthName, currency })}</p>
       </figcaption>
       {data.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted">No spending this month.</p>
+        <p className="py-10 text-center text-sm text-muted">{t("chart.noSpending")}</p>
       ) : (
         <ul className="space-y-1">
           {data.map((d) => {
@@ -246,7 +279,9 @@ export function CategoryBars({
                     active ? "bg-surface-muted" : ""
                   }`}
                 >
-                  <span className={`truncate ${active ? "font-semibold" : "text-muted"}`}>{d.category}</span>
+                  <span className={`truncate ${active ? "font-semibold" : "text-muted"}`}>
+                    {t(`cat.${d.category}` as MessageKey)}
+                  </span>
                   <span className="flex min-w-0 items-center gap-2">
                     <span
                       aria-hidden

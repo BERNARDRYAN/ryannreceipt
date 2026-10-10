@@ -35,6 +35,15 @@ They only create `receipt_*` objects and are safe to re-run.
 Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 `RL_READ` in `wrangler.jsonc`) on top of an in-memory window.
 
+## Using it
+
+- **Templates**: first visit opens a gallery (Kopitiam, Grocery, Electronics, Ride, Hawker, Blank); later via **New ▾**.
+- **Four steps**: Shop → Items → Payment → Look. Click any line on the paper to jump to its field.
+- **Looks**: one-click paper/typeface/grain combinations; finer control under *More options*.
+- **Shortcuts**: Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z redo, Ctrl/⌘+S export PNG, Ctrl/⌘+P print, Alt+N new, `?` help.
+- **Languages**: English, 中文, Bahasa Melayu (Settings ⚙). Light/dark/system theme in the same menu.
+- **History**: monthly spend, categories, optional monthly budget, warranty tracker, CSV export.
+
 ## Architecture
 
 - **Local-first.** Receipts live in a Zustand store persisted to localStorage
@@ -49,5 +58,7 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **Account data deletion** removes RyannReceipt rows only. The Supabase auth user
   is shared with RyannPace/RyannPlan and is never deleted from here.
 - **Offline.** `public/sw.js` caches the app shell and static assets; `/api` is never cached.
+- **i18n.** `lib/i18n/{en,zh,ms}.ts`; English is the source of truth and the other
+  dictionaries are type-checked for missing keys. Printed receipt labels stay English.
 
 See `ryannreceipt_specification.md` for the original specification.

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #f3f1ec;
   --surface: #ffffff;
   --surface-muted: #ebe8e1;
@@ -23,8 +24,10 @@
   --ink: #1a1a1a;
 }
 
+/* Dark tokens: follow the OS unless the user picked a theme (data-theme on <html>). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --background: #141412;
     --surface: #1d1c1a;
     --surface-muted: #262522;
@@ -41,6 +44,25 @@
     --viz-context: #4a4843;
     --viz-grid: #2c2c2a;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #141412;
+  --surface: #1d1c1a;
+  --surface-muted: #262522;
+  --foreground: #eceae4;
+  --muted: #9c978c;
+  --border: #34322e;
+  --accent: #eceae4;
+  --accent-contrast: #141412;
+  --desk: #0e0e0d;
+  --danger: #f0735c;
+  --success: #6cc08f;
+  --warning: #e3a44a;
+  --viz-accent: #d95926;
+  --viz-context: #4a4843;
+  --viz-grid: #2c2c2a;
 }
 
 @theme inline {
@@ -61,12 +83,19 @@
   --color-viz-grid: var(--viz-grid);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-space-mono);
+  --font-display: var(--font-instrument-serif);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* CJK falls back to the platform's own fonts (PingFang, Microsoft YaHei, Noto). */
+  font-family:
+    var(--font-geist-sans), ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--viz-accent) 28%, transparent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -216,6 +245,10 @@ body {
  * exact `@page` size before calling window.print().
  * ------------------------------------------------------------------------- */
 @media print {
+  [data-print-root] {
+    animation: none !important;
+    transform: none !important;
+  }
   body * {
     visibility: hidden;
   }
@@ -232,5 +265,177 @@ body {
   .receipt-paper {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Studio stage: desk, printer, feed animation, stamp, click-to-edit
+ * ------------------------------------------------------------------------- */
+
+.desk-surface {
+  background-color: var(--desk);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklab, white 28%, transparent), transparent 70%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .desk-surface {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklab, white 6%, transparent), transparent 70%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+}
+
+:root[data-theme="dark"] .desk-surface {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, color-mix(in oklab, white 6%, transparent), transparent 70%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* The thermal printer the paper feeds out of. */
+.printer {
+  position: relative;
+  z-index: 2;
+  height: 34px;
+  border-radius: 12px 12px 6px 6px;
+  background: linear-gradient(180deg, #34322e 0%, #1f1e1b 70%, #171614 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 10px 24px -8px rgba(0, 0, 0, 0.45);
+}
+.printer::after {
+  /* Paper slot */
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 6px;
+  height: 4px;
+  border-radius: 4px;
+  background: #050505;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+.printer-led {
+  position: absolute;
+  top: 9px;
+  right: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+.printer-label {
+  position: absolute;
+  top: 7px;
+  left: 16px;
+  font: 600 9px/1 var(--font-space-mono), ui-monospace, monospace;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+/* Paper feeds out in small steps, like a stepper motor. */
+@keyframes receipt-feed {
+  from {
+    transform: translateY(-101%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.receipt-feed {
+  animation: receipt-feed 1.4s steps(28, end) both;
+}
+
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-14deg) scale(1.9);
+  }
+  14% {
+    opacity: 0.92;
+    transform: translate(-50%, -50%) rotate(-14deg) scale(1);
+  }
+  78% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-14deg) scale(1);
+  }
+}
+.export-stamp {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  pointer-events: none;
+  padding: 6px 14px;
+  border: 3px double #c2341d;
+  border-radius: 6px;
+  color: #c2341d;
+  font: 700 18px/1 var(--font-space-mono), ui-monospace, monospace;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  mix-blend-mode: multiply;
+  animation: stamp-in 1.8s ease-out both;
+}
+
+/* Field focused from a click on the paper. */
+@keyframes field-flash {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--viz-accent) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+.field-flash {
+  border-color: var(--viz-accent) !important;
+  animation: field-flash 0.9s ease-out 2;
+}
+
+.receipt-paper[data-interactive] [data-field] {
+  cursor: pointer;
+  border-radius: 2px;
+  outline: 1px dashed transparent;
+  outline-offset: 1px;
+  transition:
+    background-color 0.15s,
+    outline-color 0.15s;
+}
+.receipt-paper[data-interactive] [data-field]:hover {
+  background-color: rgba(235, 104, 52, 0.09);
+  outline-color: rgba(235, 104, 52, 0.55);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-feed,
+  .export-stamp,
+  .field-flash {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

@@ -39,7 +39,7 @@ const SAMPLE: ReceiptDraft = {
 
 export function SampleReceipt() {
   return (
-    <div className="receipt-shadow rotate-[1.5deg] transition-transform duration-500 hover:rotate-0">
+    <div className="receipt-shadow">
       <ReceiptCanvas draft={SAMPLE} />
     </div>
   );

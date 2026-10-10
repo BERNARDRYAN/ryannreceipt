@@ -4,12 +4,13 @@ import { useEffect, useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import { usePrefsStore } from "@/lib/store/prefs-store";
+
 import {
   createBlankDraft,
   createSampleDraft,
   DEFAULT_STYLE,
   newId,
-  newSerial,
   normalizeDraft,
 } from "@/lib/receipts/defaults";
 import type {
@@ -40,14 +41,31 @@ const MAX_LOCAL_RECEIPTS = 300;
 
 type ScalarField = Exclude<keyof ReceiptDraft, "items" | "styleConfig">;
 
+const MAX_UNDO = 100;
+/** Consecutive edits to the same field within this window form one undo step. */
+const COALESCE_MS = 800;
+let lastEdit: { key: string; at: number } | null = null;
+
+/** Sequential, zero-padded receipt number from this device's counter. */
+function issueSerial() {
+  return String(usePrefsStore.getState().nextSerial()).padStart(6, "0");
+}
+
 type ReceiptStore = {
   receipts: Record<string, LocalReceipt>;
   activeId: string;
   presets: Preset[];
+  /** Undo/redo history for the active receipt (session only, not persisted). */
+  past: ReceiptDraft[];
+  future: ReceiptDraft[];
+  undo: () => void;
+  redo: () => void;
 
   // Active-draft editing
   setField: <K extends ScalarField>(key: K, value: ReceiptDraft[K]) => void;
   setStyle: <K extends keyof ReceiptStyle>(key: K, value: ReceiptStyle[K]) => void;
+  /** Several style keys as one undo step (e.g. a "look"). */
+  setStyles: (patch: Partial<ReceiptStyle>) => void;
   addItem: () => string | null;
   updateItem: (id: string, patch: Partial<Omit<ReceiptLineItem, "id">>) => void;
   removeItem: (id: string) => void;
@@ -56,6 +74,8 @@ type ReceiptStore = {
 
   // Library
   newReceipt: () => string;
+  /** Add a receipt built elsewhere (templates) and open it. */
+  createReceipt: (draft: ReceiptDraft) => string;
   openReceipt: (id: string) => void;
   duplicateReceipt: (id: string) => string | null;
   deleteReceipt: (id: string) => LocalReceipt | null;
@@ -93,26 +113,69 @@ const initialReceipt = makeReceipt(createSampleDraft());
 export const useReceiptStore = create<ReceiptStore>()(
   persist(
     (set, get) => {
-      /** Apply `fn` to the active draft and bump its updatedAt. */
-      const editActive = (fn: (draft: ReceiptDraft) => ReceiptDraft) =>
+      /**
+       * Apply `fn` to the active draft, bump its updatedAt and record an undo
+       * step. Rapid edits with the same `key` (typing) coalesce into one step.
+       */
+      const editActive = (fn: (draft: ReceiptDraft) => ReceiptDraft, key?: string) =>
         set((s) => {
           const current = s.receipts[s.activeId];
           if (!current) return s;
+          const next = fn(current.draft);
+          if (next === current.draft) return s;
+          const now = Date.now();
+          const coalesce = !!key && lastEdit?.key === key && now - lastEdit.at < COALESCE_MS;
+          lastEdit = key ? { key, at: now } : null;
           return {
-            receipts: {
-              ...s.receipts,
-              [s.activeId]: { ...current, draft: fn(current.draft), updatedAt: nowIso() },
-            },
+            receipts: { ...s.receipts, [s.activeId]: { ...current, draft: next, updatedAt: nowIso() } },
+            past: coalesce ? s.past : [...s.past, current.draft].slice(-MAX_UNDO),
+            future: [],
           };
         });
+
+      /** Swap the active draft for one from history. */
+      const restore = (draft: ReceiptDraft, past: ReceiptDraft[], future: ReceiptDraft[]) =>
+        set((s) => {
+          const current = s.receipts[s.activeId];
+          if (!current) return s;
+          lastEdit = null;
+          return {
+            receipts: { ...s.receipts, [s.activeId]: { ...current, draft, updatedAt: nowIso() } },
+            past,
+            future,
+          };
+        });
+
+      /** Switching receipts starts a fresh history. */
+      const resetHistory = { past: [] as ReceiptDraft[], future: [] as ReceiptDraft[] };
 
       return {
         receipts: { [initialReceipt.id]: initialReceipt },
         activeId: initialReceipt.id,
         presets: [],
+        past: [],
+        future: [],
+        undo: () => {
+          const s = get();
+          const current = s.receipts[s.activeId]?.draft;
+          const previous = s.past[s.past.length - 1];
+          if (!current || !previous) return;
+          restore(previous, s.past.slice(0, -1), [current, ...s.future].slice(0, MAX_UNDO));
+        },
+        redo: () => {
+          const s = get();
+          const current = s.receipts[s.activeId]?.draft;
+          const next = s.future[0];
+          if (!current || !next) return;
+          restore(next, [...s.past, current].slice(-MAX_UNDO), s.future.slice(1));
+        },
 
-        setField: (key, value) => editActive((d) => ({ ...d, [key]: value })),
-        setStyle: (key, value) => editActive((d) => ({ ...d, styleConfig: { ...d.styleConfig, [key]: value } })),
+        setField: (key, value) => editActive((d) => (d[key] === value ? d : { ...d, [key]: value }), `f:${key}`),
+        setStyle: (key, value) =>
+          editActive(
+            (d) => (d.styleConfig[key] === value ? d : { ...d, styleConfig: { ...d.styleConfig, [key]: value } }),
+            `s:${key}`,
+          ),
         addItem: () => {
           const active = get().receipts[get().activeId];
           if (!active || active.draft.items.length >= 100) return null;
@@ -120,8 +183,12 @@ export const useReceiptStore = create<ReceiptStore>()(
           editActive((d) => ({ ...d, items: [...d.items, { id, name: "", qty: 1, price: 0 }] }));
           return id;
         },
+        setStyles: (patch) => editActive((d) => ({ ...d, styleConfig: { ...d.styleConfig, ...patch } })),
         updateItem: (id, patch) =>
-          editActive((d) => ({ ...d, items: d.items.map((it) => (it.id === id ? { ...it, ...patch } : it)) })),
+          editActive(
+            (d) => ({ ...d, items: d.items.map((it) => (it.id === id ? { ...it, ...patch } : it)) }),
+            `i:${id}:${Object.keys(patch).join(",")}`,
+          ),
         removeItem: (id) => editActive((d) => ({ ...d, items: d.items.filter((it) => it.id !== id) })),
         moveItem: (from, to) =>
           editActive((d) => {
@@ -146,7 +213,7 @@ export const useReceiptStore = create<ReceiptStore>()(
           const current = s.receipts[s.activeId]?.draft;
           // Keep the merchant and look; start fresh items, number and date.
           const draft: ReceiptDraft = {
-            ...createBlankDraft(),
+            ...createBlankDraft(issueSerial()),
             ...(current && {
               merchantName: current.merchantName,
               merchantAddress: current.merchantAddress,
@@ -163,17 +230,32 @@ export const useReceiptStore = create<ReceiptStore>()(
             }),
           };
           const receipt = makeReceipt(draft);
-          set({ receipts: prune({ ...s.receipts, [receipt.id]: receipt }, receipt.id), activeId: receipt.id });
+          set({
+            receipts: prune({ ...s.receipts, [receipt.id]: receipt }, receipt.id),
+            activeId: receipt.id,
+            ...resetHistory,
+          });
+          return receipt.id;
+        },
+        createReceipt: (draft) => {
+          const serial = issueSerial();
+          const receipt = makeReceipt({ ...draft, receiptNo: `RR-${serial}`, barcodeData: `RR${serial}` });
+          set((s) => ({
+            receipts: prune({ ...s.receipts, [receipt.id]: receipt }, receipt.id),
+            activeId: receipt.id,
+            ...resetHistory,
+          }));
           return receipt.id;
         },
         openReceipt: (id) => {
-          if (get().receipts[id]) set({ activeId: id });
+          const s = get();
+          if (s.receipts[id] && s.activeId !== id) set({ activeId: id, ...resetHistory });
         },
         duplicateReceipt: (id) => {
           const s = get();
           const source = s.receipts[id];
           if (!source) return null;
-          const serial = newSerial();
+          const serial = issueSerial();
           const copy = makeReceipt({
             ...source.draft,
             receiptNo: `RR-${serial}`,
@@ -199,7 +281,7 @@ export const useReceiptStore = create<ReceiptStore>()(
               activeId = fresh.id;
             }
           }
-          set({ receipts, activeId });
+          set({ receipts, activeId, ...(activeId !== s.activeId && resetHistory) });
           return removed;
         },
         restoreReceipt: (receipt) => set((s) => ({ receipts: { ...s.receipts, [receipt.id]: receipt } })),
@@ -235,7 +317,7 @@ export const useReceiptStore = create<ReceiptStore>()(
           }),
         clearLibrary: () => {
           const fresh = makeReceipt(createBlankDraft());
-          set({ receipts: { [fresh.id]: fresh }, activeId: fresh.id, presets: [] });
+          set({ receipts: { [fresh.id]: fresh }, activeId: fresh.id, presets: [], ...resetHistory });
         },
 
         addLocalPreset: (preset) => set((s) => ({ presets: [...s.presets, { ...preset, id: newId() }].slice(-50) })),

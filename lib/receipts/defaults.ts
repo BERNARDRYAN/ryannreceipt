@@ -29,8 +29,7 @@ export function newSerial() {
 }
 
 /** Fields every draft starts from; `createSampleDraft` layers demo content on top. */
-export function createBlankDraft(): ReceiptDraft {
-  const serial = newSerial();
+export function createBlankDraft(serial: string = newSerial()): ReceiptDraft {
   return {
     title: "Sales Receipt",
     merchantName: "",

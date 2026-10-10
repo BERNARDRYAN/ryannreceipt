@@ -3,10 +3,12 @@
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { useT } from "@/lib/i18n/messages";
 import { toast } from "@/lib/store/toast-store";
 import { ditherLogo, LogoError } from "@/lib/utils/dither";
 
 export function LogoField({ value, onChange }: { value: string; onChange: (logo: string) => void }) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -16,7 +18,7 @@ export function LogoField({ value, onChange }: { value: string; onChange: (logo:
     try {
       onChange(await ditherLogo(file));
     } catch (err) {
-      toast(err instanceof LogoError ? err.message : "Couldn't process that image.", { tone: "error" });
+      toast(err instanceof LogoError ? err.message : t("logo.failed"), { tone: "error" });
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -24,19 +26,20 @@ export function LogoField({ value, onChange }: { value: string; onChange: (logo:
   }
 
   return (
-    <div className="space-y-1">
-      <span className="block text-xs font-medium text-muted">Logo</span>
+    <div className="relative space-y-1">
+      <span className="block text-xs font-medium text-muted">{t("field.logo")}</span>
       <div className="flex items-center gap-3">
         <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-[#faf9f5]">
           {value ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={value} alt="Logo preview" className="max-h-12 max-w-20 [image-rendering:pixelated]" />
           ) : (
-            <span className="text-[11px] text-neutral-500">No logo</span>
+            <span className="text-[11px] text-neutral-500">{t("logo.none")}</span>
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
           <button
+            id="field-logo"
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
@@ -47,7 +50,7 @@ export function LogoField({ value, onChange }: { value: string; onChange: (logo:
             ) : (
               <ImagePlus className="size-3.5" aria-hidden />
             )}
-            {value ? "Replace" : "Upload"}
+            {value ? t("logo.replace") : t("logo.upload")}
           </button>
           {value && (
             <button
@@ -56,7 +59,7 @@ export function LogoField({ value, onChange }: { value: string; onChange: (logo:
               className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted hover:bg-surface-muted hover:text-foreground"
             >
               <X className="size-3.5" aria-hidden />
-              Remove
+              {t("logo.remove")}
             </button>
           )}
         </div>
@@ -70,7 +73,7 @@ export function LogoField({ value, onChange }: { value: string; onChange: (logo:
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
       </div>
-      <p className="text-[11px] text-muted">Converted to 1-bit dots, like a real thermal printer.</p>
+      <p className="text-[11px] text-muted">{t("logo.hint")}</p>
     </div>
   );
 }

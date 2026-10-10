@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
 import type { PublicUser } from "@/lib/auth/public-user";
+import { useLocale, useT } from "@/lib/i18n/messages";
 import { useAuthStore } from "@/lib/store/auth-store";
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
@@ -34,7 +35,11 @@ function nextHashedNonce() {
  * Every attempt uses a fresh server-issued nonce (see the token route), so GIS is
  * re-initialised after each credential and periodically while idle.
  */
+const GIS_LOCALE = { en: "en", zh: "zh_CN", ms: "ms" } as const;
+
 export function GoogleAuthButton() {
+  const t = useT();
+  const locale = useLocale();
   const containerRef = useRef<HTMLDivElement>(null);
   const [gisReady, setGisReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,9 +74,10 @@ export function GoogleAuthButton() {
           text: "signin",
           shape: "pill",
           logo_alignment: "left",
+          locale: GIS_LOCALE[locale],
         });
       } catch {
-        if (!cancelled) setError("Sign-in is unavailable right now.");
+        if (!cancelled) setError(t("auth.unavailable"));
       }
     }
 
@@ -91,7 +97,7 @@ export function GoogleAuthButton() {
         useAuthStore.getState().setUser(user);
       } catch (err) {
         console.warn("[RyannReceipt] Google sign-in failed:", err instanceof Error ? err.message : err);
-        if (!cancelled) setError("Google sign-in failed. Please try again.");
+        if (!cancelled) setError(t("auth.failed"));
         // The nonce was burned by the attempt; issue a new one.
         void arm();
       }
@@ -103,7 +109,7 @@ export function GoogleAuthButton() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [gisReady]);
+  }, [gisReady, locale, t]);
 
   return (
     <div className="flex items-center gap-2">

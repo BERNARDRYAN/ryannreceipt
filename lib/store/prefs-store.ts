@@ -1,0 +1,132 @@
+"use client";
+
+import { useEffect, useSyncExternalStore } from "react";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+
+import type { Locale } from "@/lib/i18n/messages";
+import type { Currency } from "@/lib/validators/receipt-schema";
+
+export type ThemeChoice = "system" | "light" | "dark";
+
+export const PREFS_KEY = "ryannreceipt:prefs";
+
+type PrefsStore = {
+  locale: Locale;
+  theme: ThemeChoice;
+  /** First-visit studio guide finished or skipped. */
+  guideDone: boolean;
+  /** Template picker shown on first studio visit. */
+  templatesSeen: boolean;
+  signInBannerDismissed: boolean;
+  /** Monthly spending budget per currency (History). */
+  budgets: Partial<Record<Currency, number>>;
+  /** Last sequential receipt number issued on this device. */
+  lastSerial: number;
+
+  setLocale: (locale: Locale) => void;
+  setTheme: (theme: ThemeChoice) => void;
+  setGuideDone: (done: boolean) => void;
+  setTemplatesSeen: () => void;
+  dismissSignInBanner: () => void;
+  setBudget: (currency: Currency, amount: number | null) => void;
+  /** Next number in the device's sequence, e.g. 125 -> "RR-000125". */
+  nextSerial: () => number;
+};
+
+/** Pick the UI language from the browser on first visit. */
+function detectLocale(): Locale {
+  if (typeof navigator === "undefined") return "en";
+  const lang = navigator.language.toLowerCase();
+  if (lang.startsWith("zh")) return "zh";
+  if (lang.startsWith("ms") || lang.startsWith("id")) return "ms";
+  return "en";
+}
+
+export const usePrefsStore = create<PrefsStore>()(
+  persist(
+    (set, get) => ({
+      locale: "en",
+      theme: "system",
+      guideDone: false,
+      templatesSeen: false,
+      signInBannerDismissed: false,
+      budgets: {},
+      lastSerial: 0,
+
+      setLocale: (locale) => set({ locale }),
+      setTheme: (theme) => set({ theme }),
+      setGuideDone: (guideDone) => set({ guideDone }),
+      setTemplatesSeen: () => set({ templatesSeen: true }),
+      dismissSignInBanner: () => set({ signInBannerDismissed: true }),
+      setBudget: (currency, amount) =>
+        set((s) => {
+          const budgets = { ...s.budgets };
+          if (amount && amount > 0) budgets[currency] = amount;
+          else delete budgets[currency];
+          return { budgets };
+        }),
+      nextSerial: () => {
+        // Start somewhere that looks like a shop that's been open a while.
+        const next = (get().lastSerial || 100) + 1;
+        set({ lastSerial: next });
+        return next;
+      },
+    }),
+    {
+      name: PREFS_KEY,
+      version: 1,
+      storage: createJSONStorage(() => localStorage),
+      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial }) => ({
+        locale,
+        theme,
+        guideDone,
+        templatesSeen,
+        signInBannerDismissed,
+        budgets,
+        lastSerial,
+      }),
+      // First visit: nothing stored yet, so adopt the browser language.
+      merge: (persisted, current) =>
+        persisted ? { ...current, ...(persisted as object) } : { ...current, locale: detectLocale() },
+      skipHydration: true,
+    },
+  ),
+);
+
+const persistApi = usePrefsStore.persist;
+const subscribe = (cb: () => void) => persistApi.onFinishHydration(cb);
+
+/** True once prefs are loaded from localStorage (false on the server). */
+export function usePrefsHydrated() {
+  return useSyncExternalStore(subscribe, () => persistApi.hasHydrated(), () => false);
+}
+
+/**
+ * Mounted once in the root layout: loads prefs, then keeps <html lang> and
+ * data-theme in sync. (An inline script applies the theme before first paint.)
+ */
+export function PrefsSync() {
+  const locale = usePrefsStore((s) => s.locale);
+  const theme = usePrefsStore((s) => s.theme);
+  const hydrated = usePrefsHydrated();
+
+  useEffect(() => {
+    if (!persistApi.hasHydrated()) void persistApi.rehydrate();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const root = document.documentElement;
+    root.lang = locale === "zh" ? "zh-Hans" : locale;
+    if (theme === "system") delete root.dataset.theme;
+    else root.dataset.theme = theme;
+  }, [hydrated, locale, theme]);
+
+  return null;
+}
+
+/** Runs before React to avoid a light/dark flash. Kept tiny and dependency-free. */
+export const themeBootScript = `try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(
+  PREFS_KEY,
+)})||"{}");var t=p.state&&p.state.theme;if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;

@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Courier_Prime, Doto, Geist, Space_Mono } from "next/font/google";
+import { Courier_Prime, Doto, Geist, Instrument_Serif, Space_Mono } from "next/font/google";
 
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import { Toaster } from "@/components/ui/toaster";
+import { PrefsSync, themeBootScript } from "@/lib/store/prefs-store";
 
 import "./globals.css";
 
@@ -23,13 +24,30 @@ const courierPrime = Courier_Prime({
   weight: ["400", "700"],
 });
 
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
+
 const doto = Doto({
   variable: "--font-doto",
   subsets: ["latin"],
   weight: ["700", "900"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  openGraph: {
+    type: "website",
+    siteName: "RyannReceipt",
+    title: "RyannReceipt",
+    description: "Retro thermal receipts, expenses and warranty reminders. Part of the Ryann Suite.",
+  },
+  twitter: { card: "summary_large_image" },
   title: {
     default: "RyannReceipt",
     template: "%s · RyannReceipt",
@@ -49,11 +67,20 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${spaceMono.variable} ${courierPrime.variable} ${doto.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      // data-theme is set by the boot script before React hydrates.
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${spaceMono.variable} ${courierPrime.variable} ${doto.variable} ${instrumentSerif.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className="flex min-h-full flex-col">
         {children}
         <Toaster />
         <RegisterServiceWorker />
+        <PrefsSync />
       </body>
     </html>
   );

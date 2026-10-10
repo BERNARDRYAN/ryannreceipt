@@ -1,8 +1,11 @@
 "use client";
 
 import { ChevronDown, Copy, Download, FileText, LoaderCircle, Printer, Share2 } from "lucide-react";
-import { useId, useState, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
 
+import { menuItemClass, menuLabelClass, useAnchoredPopover } from "@/components/ui/use-anchored-popover";
+import { useT } from "@/lib/i18n/messages";
+import { exportActions, useEditorStore } from "@/lib/store/editor-store";
 import { toast } from "@/lib/store/toast-store";
 import {
   canCopyImage,
@@ -22,6 +25,10 @@ type ExportBarProps = {
   targetRef: RefObject<HTMLDivElement | null>;
   draft: ReceiptDraft;
   disabled?: boolean;
+  /** Registers keyboard-shortcut actions; only one mounted bar should. */
+  primary?: boolean;
+  /** Larger "Export" label for the phone bottom bar. */
+  variant?: "header" | "bar";
 };
 
 type Job = "png" | "pdf" | "copy" | "share" | null;
@@ -35,76 +42,89 @@ function useClientCapabilities() {
   return { copy, share };
 }
 
-const menuItem =
-  "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm hover:bg-surface-muted disabled:opacity-50";
-
-/**
- * Primary "PNG" button plus a menu: resolution, copy, share, PDF and print.
- * The menu is a native popover (light-dismiss and Esc for free).
- */
-export function ExportBar({ targetRef, draft, disabled }: ExportBarProps) {
+/** Primary PNG button plus a menu: resolution, copy, share, PDF and print. */
+export function ExportBar({ targetRef, draft, disabled, primary = true, variant = "header" }: ExportBarProps) {
+  const t = useT();
   const [scale, setScale] = useState<PngScale>(2);
   const [job, setJob] = useState<Job>(null);
   const caps = useClientCapabilities();
-  const menuId = useId();
+  const showStamp = useEditorStore((s) => s.showStamp);
+  const { triggerProps, popoverProps, close } = useAnchoredPopover({ align: "end", width: 248 });
   const busy = job !== null;
   const paperMm = draft.styleConfig.width === "58mm" ? 58 : 80;
   const basename = exportBasename(draft.merchantName, draft.receiptNo);
 
-  function closeMenu() {
-    document.getElementById(menuId)?.hidePopover();
-  }
-
   async function run(kind: Exclude<Job, null>, task: (node: HTMLElement) => Promise<unknown>) {
     const node = targetRef.current;
     if (!node || busy) return;
-    closeMenu();
+    close();
     setJob(kind);
     try {
       await task(node);
+      if (kind === "png" || kind === "pdf") showStamp();
     } catch {
-      toast(`Couldn't ${kind === "copy" ? "copy" : kind === "share" ? "share" : `export ${kind.toUpperCase()}`}. Try again.`, {
-        tone: "error",
-      });
+      toast(t("export.failed"), { tone: "error" });
     } finally {
       setJob(null);
     }
   }
 
+  function print() {
+    const node = targetRef.current;
+    close();
+    if (node) printNode(node, paperMm);
+  }
+
+  const exportPng = () => run("png", (node) => downloadNodeAsPng(node, basename, scale));
+
+  // Expose the latest handlers to keyboard shortcuts (Ctrl+S / Ctrl+P).
+  useEffect(() => {
+    if (!primary) return;
+    exportActions.png = () => void exportPng();
+    exportActions.print = print;
+    return () => {
+      exportActions.png = undefined;
+      exportActions.print = undefined;
+    };
+  });
+
   const spinner = <LoaderCircle className="size-4 animate-spin" aria-hidden />;
+  const big = variant === "bar";
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center" data-guide="export">
       <button
         type="button"
-        onClick={() => run("png", (node) => downloadNodeAsPng(node, basename, scale))}
+        onClick={() => void exportPng()}
         disabled={disabled || busy}
-        className="inline-flex items-center gap-1.5 rounded-l-md bg-accent py-1.5 pr-2.5 pl-3 text-sm font-medium text-accent-contrast hover:opacity-90 disabled:opacity-50"
+        className={`inline-flex items-center gap-1.5 rounded-l-lg bg-accent font-medium text-accent-contrast shadow-sm hover:opacity-90 disabled:opacity-50 ${
+          big ? "py-2.5 pr-3 pl-4 text-sm" : "py-1.5 pr-2.5 pl-3 text-sm"
+        }`}
       >
         {job === "png" ? spinner : <Download className="size-4" aria-hidden />}
         <span>
-          PNG <span className="font-normal opacity-70">{scale}x</span>
+          {big ? t("export.button") : t("export.png")} <span className="font-normal opacity-70">{scale}x</span>
         </span>
       </button>
       <button
+        {...triggerProps}
         type="button"
-        popoverTarget={menuId}
         disabled={disabled}
-        aria-label="More export options"
-        className="inline-flex items-center self-stretch rounded-r-md border-l border-accent-contrast/20 bg-accent px-1.5 text-accent-contrast hover:opacity-90 disabled:opacity-50"
+        aria-label={t("export.more")}
+        className={`inline-flex items-center self-stretch rounded-r-lg border-l border-accent-contrast/20 bg-accent px-1.5 text-accent-contrast shadow-sm hover:opacity-90 disabled:opacity-50 ${
+          big ? "px-2.5" : ""
+        }`}
       >
         {busy && job !== "png" ? spinner : <ChevronDown className="size-4" aria-hidden />}
       </button>
 
-      <div
-        id={menuId}
-        popover="auto"
-        className="fixed inset-auto top-14 right-4 m-0 w-60 rounded-lg border border-border bg-surface p-1.5 text-foreground shadow-lg"
-      >
-        <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
-          PNG resolution
-        </p>
-        <div role="radiogroup" aria-label="PNG resolution" className="mx-1.5 mb-1.5 flex rounded-md bg-surface-muted p-0.5">
+      <div {...popoverProps} style={{ width: 248 }}>
+        <p className={menuLabelClass}>{t("export.resolution")}</p>
+        <div
+          role="radiogroup"
+          aria-label={t("export.resolution")}
+          className="mx-1.5 mb-1.5 flex rounded-lg bg-surface-muted p-0.5"
+        >
           {PNG_SCALES.map((s) => (
             <button
               key={s}
@@ -112,7 +132,7 @@ export function ExportBar({ targetRef, draft, disabled }: ExportBarProps) {
               role="radio"
               aria-checked={scale === s}
               onClick={() => setScale(s)}
-              className={`flex-1 rounded px-2 py-1 text-xs font-medium tabular-nums transition-colors ${
+              className={`flex-1 rounded-md px-2 py-1 text-xs font-medium tabular-nums transition-colors ${
                 scale === s ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"
               }`}
             >
@@ -124,47 +144,39 @@ export function ExportBar({ targetRef, draft, disabled }: ExportBarProps) {
         {caps.copy && (
           <button
             type="button"
-            className={menuItem}
+            className={menuItemClass}
             onClick={() =>
               run("copy", async (node) => {
                 await copyNodeAsImage(node, scale);
-                toast("Receipt image copied", { tone: "success" });
+                toast(t("export.copied"), { tone: "success" });
               })
             }
           >
             <Copy className="size-4" aria-hidden />
-            Copy image
+            {t("export.copy")}
           </button>
         )}
         {caps.share && (
           <button
             type="button"
-            className={menuItem}
+            className={menuItemClass}
             onClick={() => run("share", (node) => shareNodeAsImage(node, basename, draft.merchantName || "Receipt"))}
           >
             <Share2 className="size-4" aria-hidden />
-            Share…
+            {t("export.share")}
           </button>
         )}
         <button
           type="button"
-          className={menuItem}
+          className={menuItemClass}
           onClick={() => run("pdf", (node) => downloadNodeAsPdf(node, basename, paperMm))}
         >
           <FileText className="size-4" aria-hidden />
-          Download PDF
+          {t("export.pdf")}
         </button>
-        <button
-          type="button"
-          className={menuItem}
-          onClick={() => {
-            const node = targetRef.current;
-            closeMenu();
-            if (node) printNode(node, paperMm);
-          }}
-        >
+        <button type="button" className={menuItemClass} onClick={print}>
           <Printer className="size-4" aria-hidden />
-          Print ({paperMm}mm roll)
+          {t("export.print", { mm: paperMm })}
         </button>
       </div>
     </div>

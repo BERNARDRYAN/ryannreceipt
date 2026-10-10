@@ -35,6 +35,7 @@ declare namespace google.accounts.id {
   function renderButton(parent: HTMLElement, options: GsiButtonConfiguration): void;
   function disableAutoSelect(): void;
   function cancel(): void;
+  function prompt(): void;
 }
 
 interface Window {

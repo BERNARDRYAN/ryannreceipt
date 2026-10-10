@@ -5,11 +5,13 @@ import { useState } from "react";
 
 import { inputClass } from "@/components/receipt/editor/fields";
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
+import { useT } from "@/lib/i18n/messages";
 import { usePresets } from "@/lib/presets/use-presets";
 import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
 import { toast } from "@/lib/store/toast-store";
 
 export function PresetsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const draft = useActiveDraft();
   const applyPreset = useReceiptStore((s) => s.applyPreset);
   const { presets, loading, cloud, save, remove } = usePresets();
@@ -29,9 +31,9 @@ export function PresetsDialog({ open, onClose }: { open: boolean; onClose: () =>
         styleConfig: draft.styleConfig,
       });
       setName("");
-      toast("Preset saved", { tone: "success" });
+      toast(t("presets.saved"), { tone: "success" });
     } catch {
-      toast("Couldn't save the preset. Try again.", { tone: "error" });
+      toast(t("presets.saveFailed"), { tone: "error" });
     } finally {
       setSaving(false);
     }
@@ -41,7 +43,7 @@ export function PresetsDialog({ open, onClose }: { open: boolean; onClose: () =>
     try {
       await remove(id);
     } catch {
-      toast("Couldn't delete the preset.", { tone: "error" });
+      toast(t("presets.deleteFailed"), { tone: "error" });
     }
   }
 
@@ -49,24 +51,24 @@ export function PresetsDialog({ open, onClose }: { open: boolean; onClose: () =>
     <Dialog
       open={open}
       onClose={onClose}
-      title="Merchant presets"
+      title={t("presets.title")}
       description={
         <span className="inline-flex items-center gap-1.5">
           {cloud ? <Cloud className="size-3.5" aria-hidden /> : <HardDrive className="size-3.5" aria-hidden />}
-          {cloud ? "Synced to your account." : "Saved on this device. Sign in to sync them."}
+          {cloud ? t("presets.cloud") : t("presets.local")}
         </span>
       }
       actions={
         <button type="button" onClick={onClose} className={buttonStyles.secondary}>
-          Done
+          {t("common.done")}
         </button>
       }
     >
       <div className="max-h-64 space-y-1 overflow-y-auto">
-        {loading && <p className="py-3 text-center text-sm text-muted">Loading…</p>}
+        {loading && <p className="py-3 text-center text-sm text-muted">{t("common.loading")}</p>}
         {!loading && presets.length === 0 && (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-sm text-muted">
-            No presets yet. Save the current merchant, logo and paper style below.
+            {t("presets.empty")}
           </p>
         )}
         {presets.map((preset) => (
@@ -81,12 +83,12 @@ export function PresetsDialog({ open, onClose }: { open: boolean; onClose: () =>
               type="button"
               onClick={() => {
                 applyPreset(preset);
-                toast(`Applied “${preset.name}”`);
+                toast(t("presets.applied", { name: preset.name }));
                 onClose();
               }}
               className={buttonStyles.secondary}
             >
-              Apply
+              {t("presets.apply")}
             </button>
             <button
               type="button"
@@ -108,14 +110,14 @@ export function PresetsDialog({ open, onClose }: { open: boolean; onClose: () =>
       >
         <input
           aria-label="New preset name"
-          placeholder="Name, e.g. Kopitiam KL"
+          placeholder={t("presets.namePh")}
           maxLength={40}
           value={name}
           onChange={(e) => setName(e.target.value)}
           className={inputClass}
         />
         <button type="submit" disabled={!name.trim() || saving} className={`${buttonStyles.primary} shrink-0`}>
-          Save current
+          {t("presets.save")}
         </button>
       </form>
     </Dialog>

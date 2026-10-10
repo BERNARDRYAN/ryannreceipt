@@ -91,3 +91,26 @@ describe("sorting and currency", () => {
     expect(dominantCurrency([])).toBeNull();
   });
 });
+
+describe("CSV export", () => {
+  it("quotes cells and neutralises spreadsheet formulas", async () => {
+    const { csvCell, entriesToCsv } = await import("@/lib/history/csv");
+    expect(csvCell("plain")).toBe("plain");
+    expect(csvCell('say "hi", ok')).toBe('"say ""hi"", ok"');
+    expect(csvCell("=HYPERLINK(1)")).toBe("'=HYPERLINK(1)");
+    expect(csvCell("-2+3")).toBe("'-2+3");
+    expect(csvCell(-12.5)).toBe("-12.5");
+    const csv = entriesToCsv([{ ...fromLocal(local()), merchantName: "Kedai, Ali", receiptDate: "2026-10-11T14:05" }]);
+    expect(csv.startsWith("\uFEFFDate,Time,Merchant")).toBe(true);
+    expect(csv).toContain('2026-10-11,14:05,"Kedai, Ali"');
+  });
+});
+
+describe("monthLabel", () => {
+  it("formats per locale", async () => {
+    const { monthLabel } = await import("@/lib/history/entries");
+    expect(monthLabel("2026-10")).toBe("Oct");
+    expect(monthLabel("2026-10", true)).toBe("Oct 2026");
+    expect(monthLabel("2026-10", true, "zh-CN")).toBe("2026年10月");
+  });
+});

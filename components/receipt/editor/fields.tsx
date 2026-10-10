@@ -1,37 +1,36 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 export const inputClass =
-  "w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted/70 focus:border-foreground/60 focus-visible:ring-2 focus-visible:ring-foreground/15";
+  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition-[border-color,box-shadow] placeholder:text-muted/70 hover:border-foreground/25 focus:border-foreground/60 focus-visible:ring-4 focus-visible:ring-foreground/8";
 
-/** Collapsible editor section built on <details> (keyboard + a11y for free). */
-export function Section({
-  title,
-  children,
-  action,
-  defaultOpen = true,
-}: {
-  title: string;
-  children: ReactNode;
-  action?: ReactNode;
-  defaultOpen?: boolean;
-}) {
+/** Stable DOM id for an editor field, so clicks on the paper can focus it. */
+export const fieldDomId = (field: string) => `field-${field}`;
+
+/** A titled block within an editor step. */
+export function Group({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <details open={defaultOpen} className="group border-b border-border last:border-b-0">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 select-none [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-1.5">
-          <ChevronDown
-            className="size-3.5 -rotate-90 text-muted transition-transform group-open:rotate-0"
-            aria-hidden
-          />
-          <h2 className="text-xs font-semibold tracking-[0.14em] text-muted uppercase">{title}</h2>
-        </span>
-        {/* Stop clicks on actions from toggling the section. */}
-        {action && <span onClick={(e) => e.preventDefault()}>{action}</span>}
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{title}</h3>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Collapsed-by-default extras, so each step shows only what most people need. */
+export function MoreOptions({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details className="group rounded-xl border border-border bg-surface-muted/40">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown className="size-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
       </summary>
-      <div className="space-y-3 px-5 pb-5">{children}</div>
+      <div className="space-y-3 border-t border-border px-4 pt-3 pb-4">{children}</div>
     </details>
   );
 }
@@ -41,20 +40,47 @@ export function Field({
   children,
   className = "",
   hint,
+  info,
+  fieldId,
 }: {
   label: string;
   children: (id: string) => ReactNode;
   className?: string;
+  /** Short helper text, always visible. */
   hint?: string;
+  /** Longer explanation behind an ⓘ toggle. */
+  info?: string;
+  /** Editor field name; gives the input a stable id (see fieldDomId). */
+  fieldId?: string;
 }) {
-  const id = useId();
+  const autoId = useId();
+  const id = fieldId ? fieldDomId(fieldId) : autoId;
+  const [showInfo, setShowInfo] = useState(false);
   return (
-    <div className={`space-y-1 ${className}`}>
-      <label htmlFor={id} className="block text-xs font-medium text-muted">
-        {label}
-      </label>
+    <div className={`space-y-1.5 ${className}`}>
+      <div className="flex items-center gap-1">
+        <label htmlFor={id} className="block text-xs font-medium text-muted">
+          {label}
+        </label>
+        {info && (
+          <button
+            type="button"
+            onClick={() => setShowInfo((v) => !v)}
+            aria-expanded={showInfo}
+            aria-label={`About ${label}`}
+            className="rounded-full p-0.5 text-muted hover:text-foreground"
+          >
+            <Info className="size-3.5" aria-hidden />
+          </button>
+        )}
+      </div>
       {children(id)}
-      {hint && <p className="text-[11px] text-muted">{hint}</p>}
+      {info && showInfo && (
+        <p className="rounded-md bg-surface-muted px-2.5 py-2 text-xs leading-relaxed text-muted animate-[fade-up_160ms_ease-out]">
+          {info}
+        </p>
+      )}
+      {hint && <p className="text-[11px] leading-snug text-muted">{hint}</p>}
     </div>
   );
 }
@@ -64,19 +90,22 @@ export function Toggle({
   description,
   checked,
   onChange,
+  id,
 }: {
   label: string;
   description?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  id?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 py-1.5 text-sm">
+    <label className="relative flex cursor-pointer items-center justify-between gap-3 py-1.5 text-sm">
       <span>
         {label}
-        {description && <span className="block text-xs text-muted">{description}</span>}
+        {description && <span className="mt-0.5 block text-xs leading-snug text-muted">{description}</span>}
       </span>
       <input
+        id={id}
         type="checkbox"
         role="switch"
         checked={checked}
@@ -103,9 +132,9 @@ export function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <span className="block text-xs font-medium text-muted">{label}</span>
-      <div role="radiogroup" aria-label={label} className="flex rounded-md bg-surface-muted p-0.5">
+      <div role="radiogroup" aria-label={label} className="flex rounded-lg bg-surface-muted p-0.5">
         {options.map((option) => (
           <button
             key={option.value}
@@ -113,7 +142,7 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={value === option.value}
             onClick={() => onChange(option.value)}
-            className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+            className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
               value === option.value ? "bg-surface text-foreground shadow-sm" : "text-muted hover:text-foreground"
             }`}
           >

@@ -6,24 +6,26 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
-import { CategoryBars, MonthlyChart, StatTile } from "@/components/history/charts";
+import { CategoryBars, MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
+import { NumberInput } from "@/components/receipt/editor/fields";
 import { ReceiptList, type ListFilters } from "@/components/history/receipt-list";
 import { WarrantyTracker } from "@/components/history/warranty-tracker";
-import { buttonStyles } from "@/components/ui/dialog";
+import { buttonStyles, Dialog } from "@/components/ui/dialog";
 import {
   dominantCurrency,
   fromLocal,
   lastMonths,
   mergeEntries,
   monthKey,
-  monthLabel,
   sortEntries,
   sumBy,
   todayKey,
   warrantyState,
   type HistoryEntry,
 } from "@/lib/history/entries";
+import { useT } from "@/lib/i18n/messages";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { usePrefsStore } from "@/lib/store/prefs-store";
 import { isDirty, useLibraryHydrated, useReceiptStore } from "@/lib/store/receipt-store";
 import { toast } from "@/lib/store/toast-store";
 import {
@@ -42,7 +44,59 @@ const UNDO_MS = 5000;
 // Module-level so a pending delete still completes if the user navigates away.
 const pendingTimers = new Map<string, number>();
 
+/** Edit (or clear) the monthly budget for one currency. Stored on this device. */
+function BudgetDialog({ currency, open, onClose }: { currency: Currency; open: boolean; onClose: () => void }) {
+  const t = useT();
+  const current = usePrefsStore((s) => s.budgets[currency] ?? 0);
+  const setBudget = usePrefsStore((s) => s.setBudget);
+  const [value, setValue] = useState(current);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={t("budget.title")}
+      description={t("budget.body", { currency })}
+      actions={
+        <>
+          {current > 0 && (
+            <button
+              type="button"
+              className={`${buttonStyles.ghost} mr-auto`}
+              onClick={() => {
+                setBudget(currency, null);
+                onClose();
+              }}
+            >
+              {t("budget.remove")}
+            </button>
+          )}
+          <button type="button" className={buttonStyles.ghost} onClick={onClose}>
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            className={buttonStyles.primary}
+            onClick={() => {
+              setBudget(currency, value);
+              onClose();
+            }}
+          >
+            {t("common.save")}
+          </button>
+        </>
+      }
+    >
+      <label className="block space-y-1.5 text-sm">
+        <span className="text-xs font-medium text-muted">{t("budget.label", { currency })}</span>
+        <NumberInput value={value} onValueChange={setValue} decimals={2} max={1_000_000_000} autoFocus />
+      </label>
+    </Dialog>
+  );
+}
+
 export function HistoryClient() {
+  const t = useT();
+  const ml = useMonthLabel();
   const router = useRouter();
   const hydrated = useLibraryHydrated();
   const authStatus = useAuthStore((s) => s.status);
@@ -56,6 +110,8 @@ export function HistoryClient() {
   const [monthChoice, setMonthChoice] = useState("");
   const [filters, setFilters] = useState<ListFilters>({ query: "", category: "", month: "" });
   const [syncing, setSyncing] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const budgets = usePrefsStore((s) => s.budgets);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -103,7 +159,7 @@ export function HistoryClient() {
         const after = useReceiptStore.getState().receipts[entry.id];
         if (wasClean && after) useReceiptStore.getState().markSynced([{ id: entry.id, updatedAt: after.updatedAt }]);
       } catch {
-        toast("Couldn't update the pin. Try again.", { tone: "error" });
+        toast(t("history.pinFailed"), { tone: "error" });
       }
     }
   }
@@ -114,7 +170,7 @@ export function HistoryClient() {
       const copyId = useReceiptStore.getState().duplicateReceipt(entry.id);
       if (copyId) router.push(`/studio?id=${copyId}`);
     } catch {
-      toast("Couldn't duplicate that receipt.", { tone: "error" });
+      toast(t("history.duplicateFailed"), { tone: "error" });
     }
   }
 
@@ -130,7 +186,7 @@ export function HistoryClient() {
           await deleteCloudReceipt(entry.id);
           setCloud((prev) => prev?.filter((c) => c.id !== entry.id) ?? prev);
         } catch {
-          toast("Couldn't delete it from your account. Try again.", { tone: "error" });
+          toast(t("history.deleteFailed"), { tone: "error" });
           setHidden((prev) => {
             const next = new Set(prev);
             next.delete(entry.id);
@@ -141,10 +197,10 @@ export function HistoryClient() {
     }, UNDO_MS);
     pendingTimers.set(entry.id, timer);
 
-    toast(`Deleted ${entry.merchantName || "receipt"} ${entry.receiptNo}`.trim(), {
+    toast(t("list.deleted", { name: `${entry.merchantName || t("list.untitled")} ${entry.receiptNo}`.trim() }), {
       durationMs: UNDO_MS,
       action: {
-        label: "Undo",
+        label: t("common.undo"),
         onClick: () => {
           window.clearTimeout(pendingTimers.get(entry.id));
           pendingTimers.delete(entry.id);
@@ -163,9 +219,9 @@ export function HistoryClient() {
     try {
       await pushReceipts(dirtyReceipts());
       setCloud(await fetchCloudSummaries());
-      toast("Everything is synced", { tone: "success" });
+      toast(t("history.allSynced"), { tone: "success" });
     } catch {
-      toast("Sync failed. Your drafts are still on this device.", { tone: "error" });
+      toast(t("sync.failed"), { tone: "error" });
     } finally {
       setSyncing(false);
     }
@@ -202,6 +258,15 @@ export function HistoryClient() {
     .map(([category, total]) => ({ category, total }))
     .sort((a, b) => b.total - a.total);
 
+  const budget = budgets[currency] ?? 0;
+  const budgetPct = budget > 0 ? (selTotal / budget) * 100 : undefined;
+  const budgetSub =
+    budget > 0
+      ? selTotal > budget
+        ? t("budget.over", { amount: `${currency} ${formatAmount(selTotal - budget, currency)}` })
+        : `${t("budget.of", { pct: Math.round(budgetPct ?? 0), amount: `${currency} ${formatAmount(budget, currency)}` })} · ${t("budget.left", { amount: formatAmount(budget - selTotal, currency) })}`
+      : undefined;
+
   const warranties = entries?.filter((e) => e.warrantyUntil) ?? [];
   const soon = warranties.filter((e) => warrantyState(e.warrantyUntil, today).kind === "soon").length;
   const activeWarranties = warranties.filter((e) => warrantyState(e.warrantyUntil, today).kind !== "expired").length;
@@ -219,18 +284,18 @@ export function HistoryClient() {
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">History</h1>
+            <h1 className="font-display text-4xl tracking-tight">{t("history.title")}</h1>
             <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted">
               {signedIn ? (
                 cloudError ? (
-                  "Couldn't reach your account, so this shows receipts on this device."
+                  t("history.cloudError")
                 ) : (
-                  "Receipts synced with your account."
+                  t("history.synced")
                 )
               ) : (
                 <>
                   <HardDrive className="size-3.5" aria-hidden />
-                  Saved on this device. Sign in to back them up and sync.
+                  {t("history.local")}
                 </>
               )}
             </p>
@@ -238,7 +303,7 @@ export function HistoryClient() {
           <div className="flex items-center gap-2">
             {usedCurrencies.length > 1 && (
               <label className="text-sm">
-                <span className="sr-only">Currency for charts</span>
+                <span className="sr-only">{t("history.currency")}</span>
                 <select
                   value={currency}
                   onChange={(e) => setCurrencyChoice(e.target.value as Currency)}
@@ -257,12 +322,12 @@ export function HistoryClient() {
                 ) : (
                   <CloudUpload className="size-4" aria-hidden />
                 )}
-                Sync {pendingSync}
+                {t("sync.action", { count: pendingSync })}
               </button>
             )}
             <Link href="/studio" className={buttonStyles.primary}>
               <Plus className="size-4" aria-hidden />
-              New receipt
+              {t("studio.newReceipt")}
             </Link>
           </div>
         </div>
@@ -270,52 +335,65 @@ export function HistoryClient() {
         {!entries || loadingCloud ? (
           <div aria-busy className="grid gap-4 sm:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-28 animate-pulse rounded-xl bg-surface" />
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-surface" />
             ))}
-            <div className="h-72 animate-pulse rounded-xl bg-surface sm:col-span-3" />
+            <div className="h-72 animate-pulse rounded-2xl bg-surface sm:col-span-3" />
           </div>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
+          <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-surface px-6 py-16 text-center">
             <ReceiptText className="size-8 text-muted" aria-hidden />
-            <h2 className="mt-3 text-base font-semibold">No receipts yet</h2>
-            <p className="mt-1 max-w-sm text-sm text-muted">
-              Receipts you make in the studio show up here with monthly spending and warranty reminders.
-            </p>
+            <h2 className="mt-3 font-display text-2xl">{t("history.emptyTitle")}</h2>
+            <p className="mt-1 max-w-sm text-sm text-muted">{t("history.emptyBody")}</p>
             <Link href="/studio" className={`${buttonStyles.primary} mt-4`}>
-              Open the studio
+              {t("history.openStudio")}
             </Link>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 [&>:first-child]:col-span-2 sm:[&>:first-child]:col-span-1">
               <StatTile
-                label={`Spent in ${monthLabel(selectedMonth, true)}`}
+                label={t("tile.spentIn", { month: ml(selectedMonth, true) })}
                 value={`${currency} ${formatAmount(selTotal, currency)}`}
                 delta={
                   prevTotal > 0
                     ? {
                         value: selTotal - prevTotal,
-                        label: `${selTotal >= prevTotal ? "+" : "-"}${formatAmount(Math.abs(selTotal - prevTotal), currency)} vs ${monthLabel(prevKey)}`,
+                        label: t("tile.vs", {
+                          delta: `${selTotal >= prevTotal ? "+" : "-"}${formatAmount(Math.abs(selTotal - prevTotal), currency)}`,
+                          month: ml(prevKey),
+                        }),
                       }
                     : undefined
                 }
-                sub={otherCurrencyCount > 0 ? `${otherCurrencyCount} receipt(s) in other currencies not included` : undefined}
+                meter={budgetPct}
+                sub={
+                  [budgetSub, otherCurrencyCount > 0 ? t("tile.otherCurrencies", { count: otherCurrencyCount }) : null]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                }
+                action={
+                  <button
+                    type="button"
+                    onClick={() => setBudgetOpen(true)}
+                    className="-mt-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted ring-1 ring-border hover:bg-surface-muted hover:text-foreground"
+                  >
+                    {budget > 0 ? t("budget.edit") : t("budget.set")}
+                  </button>
+                }
               />
               <StatTile
-                label={`Receipts in ${monthLabel(selectedMonth, true)}`}
+                label={t("tile.receiptsIn", { month: ml(selectedMonth, true) })}
                 value={countsByMonth.get(selectedMonth) ?? 0}
-                sub={`${entries.length} receipt${entries.length === 1 ? "" : "s"} in total`}
+                sub={t("tile.totalCount", { count: entries.length })}
               />
               <StatTile
-                label="Active warranties"
+                label={t("tile.warranties")}
                 value={activeWarranties}
                 sub={
                   soon > 0 ? (
-                    <span className="font-medium text-warning">
-                      {soon} expiring within 30 days
-                    </span>
+                    <span className="font-medium text-warning">{t("tile.expiringSoon", { count: soon })}</span>
                   ) : (
-                    "None expiring in the next 30 days"
+                    t("tile.noneExpiring")
                   )
                 }
               />
@@ -326,7 +404,7 @@ export function HistoryClient() {
               <CategoryBars
                 data={categoryData}
                 currency={currency}
-                monthName={monthLabel(selectedMonth, true)}
+                monthName={ml(selectedMonth, true)}
                 activeCategory={filters.category}
                 onSelect={(category) => setFilters((f) => ({ ...f, category }))}
               />
@@ -347,6 +425,7 @@ export function HistoryClient() {
           </>
         )}
       </main>
+      {budgetOpen && <BudgetDialog currency={currency} open={budgetOpen} onClose={() => setBudgetOpen(false)} />}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { CloudUpload, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
+import { useT } from "@/lib/i18n/messages";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { isDirty, useLibraryHydrated, useReceiptStore } from "@/lib/store/receipt-store";
 import { toast } from "@/lib/store/toast-store";
@@ -24,6 +25,7 @@ function readDismissed(userId: string) {
  * this device (spec §6 "Seamless Cloud Sync").
  */
 export function SyncPrompt() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   const hydrated = useLibraryHydrated();
   const pending = useReceiptStore((s) => Object.values(s.receipts).filter(isDirty).length);
@@ -48,12 +50,10 @@ export function SyncPrompt() {
     setSyncing(true);
     try {
       await pushReceipts(receipts);
-      toast(`Synced ${receipts.length} receipt${receipts.length === 1 ? "" : "s"} to your account`, {
-        tone: "success",
-      });
+      toast(t("sync.done", { count: receipts.length }), { tone: "success" });
       dismiss();
     } catch {
-      toast("Sync failed. Your drafts are still safe on this device.", { tone: "error" });
+      toast(t("sync.failed"), { tone: "error" });
     } finally {
       setSyncing(false);
     }
@@ -63,18 +63,12 @@ export function SyncPrompt() {
     <Dialog
       open={open}
       onClose={dismiss}
-      title="Sync your local drafts?"
-      description={
-        <>
-          You have <strong className="text-foreground">{pending}</strong> receipt{pending === 1 ? "" : "s"} saved only
-          on this device. Upload {pending === 1 ? "it" : "them"} to your account to see{" "}
-          {pending === 1 ? "it" : "them"} everywhere you sign in.
-        </>
-      }
+      title={t("sync.title")}
+      description={t("sync.body", { count: pending })}
       actions={
         <>
           <button type="button" onClick={dismiss} className={buttonStyles.ghost} disabled={syncing}>
-            Not now
+            {t("sync.notNow")}
           </button>
           <button type="button" onClick={handleSync} className={buttonStyles.primary} disabled={syncing}>
             {syncing ? (
@@ -82,7 +76,7 @@ export function SyncPrompt() {
             ) : (
               <CloudUpload className="size-4" aria-hidden />
             )}
-            Sync {pending}
+            {t("sync.action", { count: pending })}
           </button>
         </>
       }

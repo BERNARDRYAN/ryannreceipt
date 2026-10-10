@@ -3,15 +3,19 @@
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 
-import { inputClass, NumberInput, Section } from "@/components/receipt/editor/fields";
+import { fieldDomId, Group, inputClass, NumberInput } from "@/components/receipt/editor/fields";
+import { useT } from "@/lib/i18n/messages";
 import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
-import { currencyDecimals } from "@/lib/utils/currency";
+import { currencyDecimals, formatAmount, lineTotal } from "@/lib/utils/currency";
+
+const GRID = "grid grid-cols-[1.25rem_minmax(0,1fr)_3.25rem_5.25rem_2rem] gap-x-1.5";
 
 /**
  * Line items: Enter moves to the next row (or adds one on the last row), the
  * grip drags to reorder, and ↑/↓ on the focused grip reorders from the keyboard.
  */
 export function ItemsEditor() {
+  const t = useT();
   const draft = useActiveDraft();
   const addItem = useReceiptStore((s) => s.addItem);
   const updateItem = useReceiptStore((s) => s.updateItem);
@@ -40,7 +44,6 @@ export function ItemsEditor() {
   }
 
   function handleGripKey(e: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
     if (e.key === "ArrowUp" && index > 0) {
       e.preventDefault();
       moveItem(index, index - 1);
@@ -50,31 +53,35 @@ export function ItemsEditor() {
     }
   }
 
+  const addButton = (
+    <button
+      id={fieldDomId("items")}
+      type="button"
+      onClick={handleAdd}
+      disabled={items.length >= 100}
+      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-muted disabled:opacity-40"
+    >
+      <Plus className="size-3.5" aria-hidden />
+      {t("items.add")}
+    </button>
+  );
+
   return (
-    <Section
-      title={`Items (${items.length})`}
-      action={
+    <Group title={`${t("items.title")} (${items.length})`} action={addButton}>
+      {items.length === 0 ? (
         <button
           type="button"
           onClick={handleAdd}
-          disabled={items.length >= 100}
-          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-surface-muted disabled:opacity-40"
+          className="w-full rounded-xl border border-dashed border-border px-3 py-8 text-center text-sm text-muted hover:border-foreground/40 hover:text-foreground"
         >
-          <Plus className="size-3.5" aria-hidden />
-          Add item
+          {t("items.empty")}
         </button>
-      }
-    >
-      {items.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-sm text-muted">
-          No items yet. Add one to start.
-        </p>
       ) : (
-        <div className="grid grid-cols-[1.25rem_1fr_3.5rem_5.5rem_2rem] gap-x-1.5 px-0.5 text-[11px] font-medium text-muted">
+        <div className={`${GRID} px-0.5 text-[11px] font-medium text-muted`}>
           <span />
-          <span>Item</span>
-          <span className="text-right">Qty</span>
-          <span className="text-right">Price</span>
+          <span>{t("items.colItem")}</span>
+          <span className="text-right">{t("items.colQty")}</span>
+          <span className="text-right">{t("items.colPrice")}</span>
           <span />
         </div>
       )}
@@ -93,9 +100,9 @@ export function ItemsEditor() {
               setDragFrom(null);
               setDragOver(null);
             }}
-            className={`grid grid-cols-[1.25rem_1fr_3.5rem_5.5rem_2rem] items-center gap-1.5 rounded-md transition-shadow ${
+            className={`${GRID} items-center rounded-lg transition-shadow ${
               dragOver === index && dragFrom !== index ? "ring-2 ring-foreground/25" : ""
-            } ${dragFrom === index ? "opacity-50" : ""}`}
+            } ${dragFrom === index ? "opacity-50" : ""} animate-[fade-up_160ms_ease-out]`}
           >
             <button
               type="button"
@@ -112,18 +119,19 @@ export function ItemsEditor() {
               }}
               onKeyDown={(e) => handleGripKey(e, index)}
               aria-label={`Reorder ${item.name || `item ${index + 1}`}. Use arrow keys to move.`}
-              className="flex h-8 cursor-grab items-center justify-center rounded text-muted hover:text-foreground active:cursor-grabbing"
+              className="flex h-9 cursor-grab items-center justify-center rounded text-muted hover:text-foreground active:cursor-grabbing"
             >
               <GripVertical className="size-4" aria-hidden />
             </button>
             <input
+              id={fieldDomId(`item-${item.id}`)}
               ref={(el) => {
                 if (el) nameRefs.current.set(item.id, el);
                 else nameRefs.current.delete(item.id);
               }}
               autoFocus={item.id === focusNewId}
               aria-label={`Item ${index + 1} name`}
-              placeholder="Item name"
+              placeholder={t("items.namePh")}
               className={inputClass}
               maxLength={80}
               value={item.name}
@@ -134,7 +142,7 @@ export function ItemsEditor() {
               aria-label={`Item ${index + 1} quantity`}
               integer
               max={9999}
-              className="text-right"
+              className="px-2 text-right"
               value={item.qty}
               onValueChange={(qty) => updateItem(item.id, { qty })}
               onKeyDown={(e) => handleEnter(e, index)}
@@ -143,7 +151,7 @@ export function ItemsEditor() {
               aria-label={`Item ${index + 1} unit price`}
               decimals={decimals}
               max={1_000_000}
-              className="text-right"
+              className="px-2 text-right"
               value={item.price}
               onValueChange={(price) => updateItem(item.id, { price })}
               onKeyDown={(e) => handleEnter(e, index)}
@@ -152,16 +160,34 @@ export function ItemsEditor() {
               type="button"
               onClick={() => removeItem(item.id)}
               aria-label={`Remove ${item.name || `item ${index + 1}`}`}
-              className="flex h-8 items-center justify-center rounded-md text-muted hover:bg-surface-muted hover:text-foreground"
+              className="flex h-9 items-center justify-center rounded-md text-muted hover:bg-surface-muted hover:text-danger"
             >
               <Trash2 className="size-4" aria-hidden />
             </button>
+            {item.qty > 1 && item.price > 0 && (
+              <span className="col-span-5 -mt-0.5 pr-10 text-right text-[11px] text-muted tabular-nums">
+                = {formatAmount(lineTotal(item, currency), currency)}
+              </span>
+            )}
           </li>
         ))}
       </ul>
       {items.length > 0 && (
-        <p className="text-[11px] text-muted">Tip: press Enter to jump to the next row or add a new one.</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] text-muted">{t("items.tip")}</p>
+          {items.length > 3 && (
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={items.length >= 100}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium hover:bg-surface-muted disabled:opacity-40"
+            >
+              <Plus className="size-3.5" aria-hidden />
+              {t("items.add")}
+            </button>
+          )}
+        </div>
       )}
-    </Section>
+    </Group>
   );
 }

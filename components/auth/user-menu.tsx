@@ -7,6 +7,7 @@ import { useId, useState } from "react";
 
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
 import type { PublicUser } from "@/lib/auth/public-user";
+import { useT } from "@/lib/i18n/messages";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useReceiptStore } from "@/lib/store/receipt-store";
 import { toast } from "@/lib/store/toast-store";
@@ -42,6 +43,7 @@ const menuItem =
 
 /** Avatar button with a native-popover account menu (light-dismiss + Esc for free). */
 export function UserMenu({ user }: { user: PublicUser }) {
+  const t = useT();
   const signOut = useAuthStore((s) => s.signOut);
   const clearLibrary = useReceiptStore((s) => s.clearLibrary);
   const [signingOut, setSigningOut] = useState(false);
@@ -62,10 +64,10 @@ export function UserMenu({ user }: { user: PublicUser }) {
       const { deleted } = await deleteAccountData();
       if (alsoLocal) clearLibrary();
       setConfirmOpen(false);
-      toast(`Deleted ${deleted.receipts} receipts and ${deleted.presets} presets`, { tone: "success" });
+      toast(t("delete.done", { receipts: deleted.receipts, presets: deleted.presets }), { tone: "success" });
       await signOut();
     } catch {
-      toast("Couldn't delete your data. Nothing was removed.", { tone: "error" });
+      toast(t("delete.failed"), { tone: "error" });
     } finally {
       setDeleting(false);
     }
@@ -76,7 +78,7 @@ export function UserMenu({ user }: { user: PublicUser }) {
       <button
         type="button"
         popoverTarget={menuId}
-        aria-label={`Account: ${user.name ?? user.email ?? "signed in"}`}
+        aria-label={t("menu.account", { name: user.name ?? user.email ?? "" })}
         className="rounded-full p-0.5 ring-1 ring-border hover:ring-foreground/40"
       >
         <Avatar user={user} size={28} />
@@ -84,7 +86,7 @@ export function UserMenu({ user }: { user: PublicUser }) {
       <div
         id={menuId}
         popover="auto"
-        className="fixed inset-auto top-14 right-4 m-0 w-64 rounded-lg border border-border bg-surface p-1.5 text-foreground shadow-lg"
+        className="fixed inset-auto top-14 right-4 m-0 w-64 rounded-xl border border-border bg-surface p-1.5 text-foreground shadow-xl shadow-black/10"
       >
         <div className="flex items-center gap-3 px-2.5 py-2">
           <Avatar user={user} size={36} />
@@ -96,7 +98,7 @@ export function UserMenu({ user }: { user: PublicUser }) {
         <div className="my-1 border-t border-border" />
         <Link href="/history" className={menuItem}>
           <History className="size-4" aria-hidden />
-          History & warranties
+          {t("menu.history")}
         </Link>
         <button type="button" onClick={handleSignOut} disabled={signingOut} className={menuItem}>
           {signingOut ? (
@@ -104,7 +106,7 @@ export function UserMenu({ user }: { user: PublicUser }) {
           ) : (
             <LogOut className="size-4" aria-hidden />
           )}
-          Sign out
+          {t("menu.signOut")}
         </button>
         <div className="my-1 border-t border-border" />
         <button
@@ -117,20 +119,15 @@ export function UserMenu({ user }: { user: PublicUser }) {
           className={`${menuItem} text-danger`}
         >
           <Trash2 className="size-4" aria-hidden />
-          Delete my RyannReceipt data
+          {t("menu.deleteData")}
         </button>
       </div>
 
       <Dialog
         open={confirmOpen}
         onClose={() => !deleting && setConfirmOpen(false)}
-        title="Delete your RyannReceipt data?"
-        description={
-          <>
-            This permanently deletes every receipt and preset in your RyannReceipt cloud account. Your Ryann Suite
-            sign-in (used by RyannPace and RyannPlan) is not affected. This can&apos;t be undone.
-          </>
-        }
+        title={t("delete.title")}
+        description={t("delete.body")}
         actions={
           <>
             <button
@@ -139,7 +136,7 @@ export function UserMenu({ user }: { user: PublicUser }) {
               className={buttonStyles.ghost}
               disabled={deleting}
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -148,19 +145,17 @@ export function UserMenu({ user }: { user: PublicUser }) {
               disabled={deleting || confirmText !== "DELETE"}
             >
               {deleting && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
-              Delete everything
+              {t("delete.confirm")}
             </button>
           </>
         }
       >
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={alsoLocal} onChange={(e) => setAlsoLocal(e.target.checked)} />
-          Also clear drafts saved on this device
+          {t("delete.alsoLocal")}
         </label>
         <label className="block space-y-1 text-sm">
-          <span className="text-muted">
-            Type <strong className="font-mono text-foreground">DELETE</strong> to confirm
-          </span>
+          <span className="text-muted">{t("delete.typeToConfirm", { word: "DELETE" })}</span>
           <input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}

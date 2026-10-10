@@ -5,19 +5,24 @@ import Link from "next/link";
 
 import { formatWarrantyDate } from "@/components/receipt/receipt-canvas";
 import { warrantyState, type HistoryEntry, type WarrantyState } from "@/lib/history/entries";
+import { useT, type TFunction } from "@/lib/i18n/messages";
 
-const STATE_UI: Record<WarrantyState["kind"], { icon: typeof ShieldCheck; tone: string; label: (d: number) => string }> = {
+const STATE_UI: Record<
+  WarrantyState["kind"],
+  { icon: typeof ShieldCheck; tone: string; label: (d: number, t: TFunction) => string }
+> = {
   soon: {
     icon: CircleAlert,
     tone: "text-warning",
-    label: (d) => (d === 0 ? "Expires today" : `Expires in ${d} day${d === 1 ? "" : "s"}`),
+    label: (d, t) => (d === 0 ? t("warranty.today") : t("warranty.soon", { n: d })),
   },
-  active: { icon: ShieldCheck, tone: "text-success", label: (d) => `${d} days left` },
-  expired: { icon: ShieldX, tone: "text-muted", label: (d) => `Expired ${-d} day${d === -1 ? "" : "s"} ago` },
+  active: { icon: ShieldCheck, tone: "text-success", label: (d, t) => t("warranty.left", { n: d }) },
+  expired: { icon: ShieldX, tone: "text-muted", label: (d, t) => t("warranty.expired", { n: -d }) },
 };
 
 /** Warranties sorted by urgency; status always pairs icon + text, never color alone. */
 export function WarrantyTracker({ entries, today }: { entries: HistoryEntry[]; today: string }) {
+  const t = useT();
   const rows = entries
     .filter((e) => e.warrantyUntil)
     .map((e) => ({ entry: e, state: warrantyState(e.warrantyUntil, today) }))
@@ -28,16 +33,16 @@ export function WarrantyTracker({ entries, today }: { entries: HistoryEntry[]; t
     });
 
   return (
-    <section aria-labelledby="warranty-heading" className="rounded-xl border border-border bg-surface p-4">
+    <section aria-labelledby="warranty-heading" className="rounded-2xl border border-border bg-surface p-4">
       <div className="mb-3">
         <h2 id="warranty-heading" className="text-sm font-semibold">
-          Warranty tracker
+          {t("warranty.title")}
         </h2>
-        <p className="text-xs text-muted">Set a “Warranty until” date on a receipt to track it here.</p>
+        <p className="text-xs text-muted">{t("warranty.sub")}</p>
       </div>
       {rows.length === 0 ? (
         <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted">
-          No warranties tracked yet.
+          {t("warranty.empty")}
         </p>
       ) : (
         <ul className="divide-y divide-border">
@@ -52,13 +57,13 @@ export function WarrantyTracker({ entries, today }: { entries: HistoryEntry[]; t
                 >
                   <Icon className={`size-4 shrink-0 ${ui.tone}`} aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{entry.merchantName || "Untitled receipt"}</p>
+                    <p className="truncate text-sm font-medium">{entry.merchantName || t("list.untitled")}</p>
                     <p className="truncate text-xs text-muted">
-                      Until {formatWarrantyDate(entry.warrantyUntil)} · {entry.receiptNo}
+                      {t("warranty.until", { date: formatWarrantyDate(entry.warrantyUntil) })} · {entry.receiptNo}
                     </p>
                   </div>
                   <span className={`shrink-0 text-xs font-medium ${state.kind === "expired" ? "text-muted" : ui.tone}`}>
-                    {ui.label(state.daysLeft)}
+                    {ui.label(state.daysLeft, t)}
                   </span>
                 </Link>
               </li>
