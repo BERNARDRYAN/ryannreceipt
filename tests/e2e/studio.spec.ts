@@ -95,6 +95,20 @@ test("presets save and apply the merchant", async ({ page }) => {
   await expect(page.getByLabel("Store name")).toHaveValue("Preset Cafe");
 });
 
+test("desktop studio fits the viewport; only the editor panel scrolls", async ({ page }) => {
+  // Regression: absolutely positioned sr-only inputs deep in the editor used to
+  // stretch the document and make the whole page scroll into empty space.
+  const { scrollHeight, innerHeight } = await page.evaluate(() => ({
+    scrollHeight: document.documentElement.scrollHeight,
+    innerHeight: window.innerHeight,
+  }));
+  expect(scrollHeight).toBeLessThanOrEqual(innerHeight);
+  const editorScrolls = await page
+    .getByRole("complementary", { name: "Receipt editor" })
+    .evaluate((el) => el.scrollHeight > el.clientHeight);
+  expect(editorScrolls).toBe(true);
+});
+
 test("@mobile switches between Edit and Preview tabs", async ({ page }) => {
   await expect(page.getByRole("tab", { name: "Edit" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByLabel("Store name")).toBeVisible();

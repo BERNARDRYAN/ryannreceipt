@@ -165,7 +165,7 @@ export function StudioClient() {
         <aside
           id="studio-edit"
           aria-label="Receipt editor"
-          className={`bg-surface lg:order-1 lg:block lg:w-105 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-border ${
+          className={`relative bg-surface lg:order-1 lg:block lg:w-105 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-border ${
             tab === "edit" ? "block" : "hidden"
           }`}
         >
