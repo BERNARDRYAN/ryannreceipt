@@ -3,6 +3,8 @@
   // Worker name: the free URL becomes https://ryannreceipt.<your-subdomain>.workers.dev
   "name": "ryannreceipt",
   "main": ".open-next/worker.js",
+  // Serve on <name>.<account>.workers.dev; every deploy re-enables it.
+  "workers_dev": true,
   "compatibility_date": "2026-09-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
