@@ -725,4 +725,8 @@ export const en = {
   "income.stopHint": "Stop counting this from next month",
   "income.toolTitle": "Income",
   "income.toolSub": "Add your salary to see what's left to spend each month",
+  "breakdown.budgets": "Category budgets",
+  "breakdown.left": "{amount} left · {pct}% used",
+  "breakdown.over": "Over budget by {amount}",
+  "breakdown.noBudget": "No budget set",
 } as const;

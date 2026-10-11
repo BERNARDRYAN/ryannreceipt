@@ -704,4 +704,8 @@ export const zh: Messages = {
   "income.stopHint": "从下个月起不再计入",
   "income.toolTitle": "收入",
   "income.toolSub": "添加工资，查看每月还可花多少",
+  "breakdown.budgets": "类别预算",
+  "breakdown.left": "剩 {amount} · 已用 {pct}%",
+  "breakdown.over": "超出预算 {amount}",
+  "breakdown.noBudget": "未设预算",
 };

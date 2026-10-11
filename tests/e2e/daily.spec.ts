@@ -77,7 +77,9 @@ test("category budgets show progress", async ({ page }) => {
   await page.getByRole("button", { name: "Set category budgets" }).click();
   await page.getByLabel("Food & Drink", { exact: true }).fill("100");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText(/% of 100\.00/)).toBeVisible();
+  // Sample receipt: 26.80 of a 100.00 Food & Drink budget.
+  await expect(page.getByText("/ 100.00")).toBeVisible();
+  await expect(page.getByText("73.20 left · 27% used")).toBeVisible();
 });
 
 test("scanning a receipt photo creates a receipt (on-device OCR)", async ({ page }, testInfo) => {

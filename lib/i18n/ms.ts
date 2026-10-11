@@ -705,4 +705,8 @@ export const ms: Messages = {
   "income.stopHint": "Berhenti mengira mulai bulan depan",
   "income.toolTitle": "Pendapatan",
   "income.toolSub": "Tambah gaji untuk lihat baki belanja setiap bulan",
+  "breakdown.budgets": "Bajet kategori",
+  "breakdown.left": "Baki {amount} · {pct}% digunakan",
+  "breakdown.over": "Melebihi bajet {amount}",
+  "breakdown.noBudget": "Tiada bajet",
 };

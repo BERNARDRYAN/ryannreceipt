@@ -40,7 +40,11 @@ export function Breakdown({
   const [mode, setMode] = useState<BreakdownMode>("category");
   const rows = mode === "category" ? byCategory : mode === "wallet" ? byWallet : byTag;
   const sum = rows.reduce((s, r) => s + r.total, 0);
-  const max = Math.max(...rows.map((r) => Math.max(r.total, r.budget ?? 0)), 0);
+  // Budgeted categories are meters against their own limit; the rest are bars
+  // compared with each other (never two scales in one list).
+  const budgeted = mode === "category" ? rows.filter((r) => r.budget) : [];
+  const others = rows.filter((r) => !budgeted.includes(r) && r.total > 0);
+  const max = Math.max(...others.map((r) => r.total), 0);
 
   const label = (key: string) =>
     mode === "category" ? t(`cat.${key}` as MessageKey) : mode === "tag" ? `#${key}` : key || t("breakdown.noWallet");
@@ -75,55 +79,99 @@ export function Breakdown({
           {mode === "category" ? t("chart.noSpending") : t(`breakdown.empty.${mode}` as MessageKey)}
         </p>
       ) : (
-        <ul className="space-y-1">
-          {rows.map((row) => {
-            const isActive = active.mode === mode && active.key === row.key;
-            const pct = row.budget ? (row.total / row.budget) * 100 : null;
-            const tone = pct === null ? "bg-viz-accent" : pct > 100 ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-viz-accent";
-            const Icon = mode === "category" ? CATEGORY_ICONS[row.key as Category] : null;
-            return (
-              <li key={row.key}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(mode, isActive ? "" : row.key)}
-                  aria-pressed={isActive}
-                  className={`grid w-full grid-cols-[7.5rem_1fr] items-center gap-3 rounded-lg px-1.5 py-1.5 text-left text-xs hover:bg-surface-muted ${
-                    isActive ? "bg-surface-muted" : ""
-                  }`}
-                >
-                  <span className={`flex min-w-0 items-center gap-1.5 ${isActive ? "font-semibold" : "text-muted"}`}>
-                    {Icon && <Icon className="size-3.5 shrink-0" aria-hidden />}
-                    <span className="truncate">{label(row.key)}</span>
-                  </span>
-                  <span className="relative flex min-w-0 items-center gap-2">
-                    <span
-                      aria-hidden
-                      className={`block h-3 shrink-0 rounded-r-[4px] ${tone}`}
-                      style={{ width: `calc((100% - 8rem) * ${max ? row.total / max : 0})` }}
-                    />
-                    {row.budget ? (
-                      // Budget marker: a hairline where the limit sits on the same scale.
-                      <span
-                        aria-hidden
-                        className="absolute top-[-3px] h-[18px] w-px bg-foreground/50"
-                        style={{ left: `calc((100% - 8rem) * ${row.budget / max})` }}
-                      />
-                    ) : null}
-                    <span className="shrink-0 whitespace-nowrap tabular-nums">
-                      <span className="font-medium text-foreground">{formatAmount(row.total, currency)}</span>
-                      <span className="text-muted">
-                        {" · "}
-                        {pct !== null
-                          ? t("breakdown.ofBudget", { pct: Math.round(pct), amount: formatAmount(row.budget!, currency) })
-                          : `${sum ? Math.round((row.total / sum) * 100) : 0}%`}
+        <div className="space-y-4">
+          {budgeted.length > 0 && (
+            <ul className="grid gap-x-6 gap-y-1 lg:grid-cols-2" aria-label={t("breakdown.budgets")}>
+              {budgeted.map((row) => {
+                const isActive = active.mode === mode && active.key === row.key;
+                const pct = (row.total / row.budget!) * 100;
+                const tone = pct > 100 ? "bg-danger" : pct >= 80 ? "bg-warning" : "bg-viz-accent";
+                const remaining = row.budget! - row.total;
+                const Icon = CATEGORY_ICONS[row.key as Category];
+                return (
+                  <li key={row.key}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(mode, isActive ? "" : row.key)}
+                      aria-pressed={isActive}
+                      className={`w-full space-y-1.5 rounded-lg px-2 py-2 text-left text-xs hover:bg-surface-muted ${
+                        isActive ? "bg-surface-muted" : ""
+                      }`}
+                    >
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className={`flex min-w-0 items-center gap-1.5 ${isActive ? "font-semibold" : ""}`}>
+                          {Icon && <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />}
+                          <span className="truncate">{label(row.key)}</span>
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap tabular-nums">
+                          <span className="font-medium">{formatAmount(row.total, currency)}</span>
+                          <span className="text-muted"> / {formatAmount(row.budget!, currency)}</span>
+                        </span>
                       </span>
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                      {/* Each budget is its own meter: the track is the limit. */}
+                      <span aria-hidden className="block h-1.5 overflow-hidden rounded-full bg-viz-grid">
+                        <span
+                          className={`block h-full rounded-full transition-[width] duration-500 ${tone}`}
+                          style={{ width: `${Math.min(100, pct)}%` }}
+                        />
+                      </span>
+                      <span className={`block text-[11px] ${pct > 100 ? "font-medium text-danger" : pct >= 80 ? "text-warning" : "text-muted"}`}>
+                        {remaining >= 0
+                          ? t("breakdown.left", { amount: formatAmount(remaining, currency), pct: Math.round(pct) })
+                          : t("breakdown.over", { amount: formatAmount(-remaining, currency) })}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {others.length > 0 && (
+            <ul className="space-y-1">
+              {budgeted.length > 0 && (
+                <li className="px-2 pb-1 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">
+                  {t("breakdown.noBudget")}
+                </li>
+              )}
+              {others.map((row) => {
+                const isActive = active.mode === mode && active.key === row.key;
+                const Icon = mode === "category" ? CATEGORY_ICONS[row.key as Category] : null;
+                return (
+                  <li key={row.key}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(mode, isActive ? "" : row.key)}
+                      aria-pressed={isActive}
+                      className={`grid w-full grid-cols-[7.5rem_1fr] items-center gap-3 rounded-lg px-1.5 py-1.5 text-left text-xs hover:bg-surface-muted ${
+                        isActive ? "bg-surface-muted" : ""
+                      }`}
+                    >
+                      <span className={`flex min-w-0 items-center gap-1.5 ${isActive ? "font-semibold" : "text-muted"}`}>
+                        {Icon && <Icon className="size-3.5 shrink-0" aria-hidden />}
+                        <span className="truncate">{label(row.key)}</span>
+                      </span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          aria-hidden
+                          className="block h-3 shrink-0 rounded-r-[4px] bg-viz-accent"
+                          style={{ width: `calc((100% - 8rem) * ${max ? row.total / max : 0})` }}
+                        />
+                        <span className="shrink-0 whitespace-nowrap tabular-nums">
+                          <span className="font-medium text-foreground">{formatAmount(row.total, currency)}</span>
+                          <span className="text-muted">
+                            {" · "}
+                            {sum ? Math.round((row.total / sum) * 100) : 0}%
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
 
       {mode === "category" && (
