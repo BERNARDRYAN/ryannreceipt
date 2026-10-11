@@ -130,3 +130,40 @@ test("privacy and terms are linked from the home page", async ({ page }) => {
   await page.getByRole("link", { name: "Terms" }).first().click();
   await expect(page.getByRole("heading", { name: "Terms of Use" })).toBeVisible();
 });
+
+test("@mobile phone tab bar adds spending from the + sheet", async ({ page }) => {
+  await page.goto("/history");
+  await page.waitForLoadState("networkidle");
+  const tabs = page.getByRole("navigation", { name: "Main" });
+  await expect(tabs.getByRole("link", { name: "History" })).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("button", { name: "Add spending" }).click();
+  await page.getByRole("dialog", { name: "Add spending" }).getByRole("button", { name: /^Quick add/ }).click();
+  await page.getByLabel("Expense", { exact: true }).fill("teh tarik 3.20 cash");
+  await page.getByRole("button", { name: "Add expense" }).click();
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Teh Tarik/ })).toBeVisible();
+});
+
+test("@mobile swipe a row right to split, left to delete", async ({ page }) => {
+  await page.goto("/history");
+  await page.waitForLoadState("networkidle");
+  const row = page.getByRole("link", { name: /Ryann Kopitiam/ }).locator("..");
+  const swipe = async (dx: number) => {
+    const box = (await row.boundingBox())!;
+    const y = box.y + box.height / 2;
+    const x = box.x + box.width / 2;
+    const ev = (type: string, clientX: number) =>
+      row.dispatchEvent(type, { pointerType: "touch", pointerId: 7, isPrimary: true, clientX, clientY: y, bubbles: true });
+    await ev("pointerdown", x);
+    for (let i = 1; i <= 6; i++) await ev("pointermove", x + (dx * i) / 6);
+    await ev("pointerup", x + dx);
+  };
+
+  await swipe(120);
+  await expect(page.getByRole("dialog", { name: "Split the bill" })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await swipe(-120);
+  await expect(page.getByText(/^Deleted/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Ryann Kopitiam/ })).toHaveCount(0);
+});

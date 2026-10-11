@@ -1,5 +1,6 @@
 import { CATEGORY_KEYWORDS, guessCategory, guessPayment, hasWord, PAYMENT_KEYWORDS } from "@/lib/quick-add/keywords";
 import type { Category, PAYMENT_METHODS } from "@/lib/validators/receipt-schema";
+import { smartTitle } from "@/lib/utils/text";
 
 export type QuickParse = {
   /** Amount spent, or null if none found. */
@@ -23,9 +24,6 @@ const WEEKDAYS: Record<string, number> = {
 
 const keyOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-function titleCase(text: string) {
-  return text.replace(/\S+/g, (w) => (/[a-z]/.test(w[0] ?? "") ? w[0].toUpperCase() + w.slice(1) : w));
-}
 
 /**
  * Parse a one-line expense such as `nasi lemak 12.90 tng yesterday #work`.
@@ -97,7 +95,7 @@ export function parseQuickAdd(input: string, today: string): QuickParse {
   }
   rest = rest.replace(/\b(paid|pay|bayar|by|with|using|via|guna|on|at|for)\b/gi, " ");
 
-  const name = titleCase(rest.replace(/\s+/g, " ").trim());
+  const name = smartTitle(rest.replace(/\s+/g, " ").trim());
   const category = guessCategory(input);
 
   return {

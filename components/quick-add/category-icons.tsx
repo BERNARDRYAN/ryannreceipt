@@ -24,3 +24,13 @@ export const CATEGORY_ICONS: Record<Category, LucideIcon> = {
   Health: HeartPulse,
   Other: MoreHorizontal,
 };
+
+/** Rounded tile with the category's icon, tinted in its own calm hue (see `.cat-tile`). */
+export function CategoryTile({ category, className = "size-10" }: { category: Category; className?: string }) {
+  const Icon = CATEGORY_ICONS[category] ?? ReceiptText;
+  return (
+    <span aria-hidden data-cat={category} className={`cat-tile flex shrink-0 items-center justify-center rounded-xl ${className}`}>
+      <Icon className="size-[45%]" strokeWidth={2} />
+    </span>
+  );
+}

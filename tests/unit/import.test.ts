@@ -45,7 +45,7 @@ describe("statement fields", () => {
   });
 
   it("cleans bank descriptions", () => {
-    expect(cleanDescription("POS DEBIT 123456 AEON BIG KL")).toBe("Aeon Big Kl");
+    expect(cleanDescription("POS DEBIT 123456 AEON BIG KL")).toBe("AEON Big KL");
     expect(cleanDescription("DuitNow Transfer Ali Bin Abu")).toBe("Ali Bin Abu");
   });
 });

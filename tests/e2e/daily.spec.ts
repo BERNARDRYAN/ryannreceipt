@@ -57,6 +57,8 @@ test("wallet, tags and tax relief are recorded and summarised", async ({ page })
 
 test("recurring expenses add themselves", async ({ page }) => {
   await page.goto("/history");
+  // Empty tools start folded under "More tools".
+  await page.getByRole("button", { name: /^Recurring/ }).click();
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.getByPlaceholder("e.g. Rent, Unifi, Netflix").fill("Netflix");
   await page.getByLabel(/^Amount/).fill("55");

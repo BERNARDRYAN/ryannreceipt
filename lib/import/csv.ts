@@ -1,4 +1,5 @@
 import { guessCategory, guessPayment } from "@/lib/quick-add/keywords";
+import { smartTitle } from "@/lib/utils/text";
 import type { Category, ReceiptDraft } from "@/lib/validators/receipt-schema";
 
 /** RFC 4180-ish CSV parser: quoted fields, escaped quotes, CRLF; delimiter auto-detected. */
@@ -98,7 +99,7 @@ export function parseAmount(raw: string): number | null {
   return negative ? -n : n;
 }
 
-/** Strip bank noise from a description: "POS DEBIT 123456 AEON BIG KL" → "Aeon Big Kl". */
+/** Strip bank noise from a description: "POS DEBIT 123456 AEON BIG KL" → "AEON Big KL". */
 export function cleanDescription(raw: string) {
   const s = raw
     .replace(/\b(pos|debit card|card purchase|purchase|debit|credit|payment to|duitnow( transfer)?|fpx|ibg|ibft|instant transfer|online|sale|trx|txn|ref(erence)?)\b[:#]?/gi, " ")
@@ -106,8 +107,7 @@ export function cleanDescription(raw: string) {
     .replace(/[*#|]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const titled = /[a-z]/.test(s) ? s : s.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase());
-  return (titled || raw.trim()).slice(0, 60);
+  return smartTitle(s || raw.trim()).slice(0, 60);
 }
 
 export type ImportRow = {

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ViewTransition } from "react";
 import { Courier_Prime, Doto, Geist, Instrument_Serif, Space_Mono } from "next/font/google";
 
 import { AppLock } from "@/components/lock/app-lock";
@@ -79,7 +80,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body className="flex min-h-full flex-col">
-        {children}
+        {/* Route changes crossfade (browsers without View Transitions just switch). */}
+        <ViewTransition>{children}</ViewTransition>
         <Toaster />
         <RegisterServiceWorker />
         <PrefsSync />

@@ -127,6 +127,8 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
     };
     const [id] = addReceipts([{ draft }]);
     if (!id) return;
+    // A tiny confirming tap on phones that support it.
+    navigator.vibrate?.(10);
     if (useAuthStore.getState().status === "signed-in") {
       const receipt = useReceiptStore.getState().receipts[id];
       if (receipt) void pushReceipts([receipt]).catch(() => undefined);

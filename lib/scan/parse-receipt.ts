@@ -1,5 +1,6 @@
 import { guessCategory, guessPayment } from "@/lib/quick-add/keywords";
 import type { Category, ReceiptDraft } from "@/lib/validators/receipt-schema";
+import { smartTitle } from "@/lib/utils/text";
 
 export type ScannedReceipt = {
   merchantName: string;
@@ -39,7 +40,7 @@ const toNumber = (s: string) => {
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function titleCase(s: string) {
-  return /[a-z]/.test(s) ? s : s.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+  return /[a-z]/.test(s) ? s : smartTitle(s);
 }
 
 function findDate(text: string): string {

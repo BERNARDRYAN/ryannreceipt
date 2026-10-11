@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
+import { Camera, Flame, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +10,9 @@ import { Breakdown, type BreakdownMode } from "@/components/history/breakdown";
 import { BudgetsDialog } from "@/components/history/budgets-dialog";
 import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
-import { FriendsCard } from "@/components/history/owed";
+import { MoreTools, type Tool } from "@/components/history/more-tools";
+import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { friendBalances, FriendsCard } from "@/components/history/owed";
 import { YearReviewDialog } from "@/components/history/year-review";
 import { ReceiptList, type ListFilters } from "@/components/history/receipt-list";
 import { RecurringCard } from "@/components/history/recurring";
@@ -30,6 +32,7 @@ import {
 } from "@/lib/history/entries";
 import { translate, useT, type MessageKey } from "@/lib/i18n/messages";
 import { convert, useFxRates } from "@/lib/fx/rates";
+import { pickInsight, type Insight } from "@/lib/history/insights";
 import { downloadMonthlyReport } from "@/lib/reports/pdf";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useSettingsHydrated, useSettingsStore } from "@/lib/store/settings-store";
@@ -54,6 +57,27 @@ const EMPTY_FILTERS: ListFilters = { query: "", category: "", month: "", day: ""
 // Module-level so a pending delete still completes if the user navigates away.
 const pendingTimers = new Map<string, number>();
 
+/** One short observation about spending, e.g. "Food & Drink is down 23% vs this time last month". */
+function InsightPill({ insight }: { insight: Insight }) {
+  const t = useT();
+  const Icon = insight.kind === "streak" ? Flame : insight.direction === "down" ? TrendingDown : TrendingUp;
+  const text =
+    insight.kind === "streak"
+      ? t("insight.streak", { days: insight.days })
+      : insight.kind === "month"
+        ? t(insight.direction === "down" ? "insight.monthDown" : "insight.monthUp", { pct: insight.pct })
+        : t(insight.direction === "down" ? "insight.catDown" : "insight.catUp", {
+            category: t(`cat.${insight.category}` as MessageKey),
+            pct: insight.pct,
+          });
+  return (
+    <p className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-sm shadow-sm ring-1 ring-border">
+      <Icon className={`size-4 shrink-0 ${insight.kind === "streak" ? "text-viz-accent" : "text-muted"}`} aria-hidden />
+      <span className="min-w-0">{text}</span>
+    </p>
+  );
+}
+
 export function HistoryClient() {
   const t = useT();
   const ml = useMonthLabel();
@@ -76,6 +100,9 @@ export function HistoryClient() {
   const homeCurrency = useSettingsStore((s) => s.homeCurrency);
   const setHomeCurrency = useSettingsStore((s) => s.setHomeCurrency);
   const categoryBudgets = useSettingsStore((s) => s.categoryBudgets);
+  const recurringRules = useSettingsStore((s) => s.recurring);
+  // Empty tools live folded in "More tools" until opened (or until they have data).
+  const [openedTools, setOpenedTools] = useState<Set<string>>(() => new Set());
   const openScan = useUiStore((s) => s.openScan);
   const uploading = useSyncState((s) => s.saving);
 
@@ -244,6 +271,7 @@ export function HistoryClient() {
     const spent = convert(e.spent, e.currency, currency, fx);
     return spent === null ? [] : [{ ...e, spent, total: convert(e.total, e.currency, currency, fx) ?? e.total, currency }];
   });
+  const insight = hydrated && entries ? pickInsight(inCurrency, today) : null;
   // Receipts we couldn't convert (rates not loaded yet / offline first visit).
   const otherCurrencyCount = (entries?.length ?? 0) - inCurrency.length;
 
@@ -301,6 +329,32 @@ export function HistoryClient() {
       ? { mode: "tag", key: filters.tag }
       : { mode: "category", key: filters.category };
 
+  const year = today.slice(0, 4);
+  const hasData: Record<string, boolean> = {
+    friends: !!entries && friendBalances(entries, currency).length > 0,
+    warranty: !!entries?.some((e) => e.warrantyUntil),
+    recurring: recurringRules.length > 0,
+    tax: inCurrency.some((e) => e.taxRelief && e.receiptDate.startsWith(year)),
+  };
+  const show = (key: string) => hasData[key] || openedTools.has(key);
+  const openTool = (key: string) => setOpenedTools((prev) => new Set(prev).add(key));
+  const latest = entries?.length ? sortEntries(entries.filter((e) => !e.isPinned)).at(0) ?? entries[0] : undefined;
+  const foldedTools: Tool[] = (
+    [
+      {
+        key: "friends",
+        icon: Users,
+        title: t("tools.split"),
+        sub: latest ? t("tools.splitSub", { name: latest.merchantName || t("list.untitled") }) : t("owed.sub"),
+        // Straight into splitting the latest bill; the Friends card appears once someone owes.
+        onOpen: () => (latest ? void openSplit(latest.id) : openTool("friends")),
+      },
+      { key: "warranty", icon: ShieldCheck, title: t("warranty.title"), sub: t("warranty.sub"), onOpen: () => openTool("warranty") },
+      { key: "recurring", icon: Repeat, title: t("recurring.title"), sub: t("recurring.sub"), onOpen: () => openTool("recurring") },
+      { key: "tax", icon: Landmark, title: t("relief.title", { year }), sub: t("relief.sub"), onOpen: () => openTool("tax") },
+    ] satisfies Tool[]
+  ).filter((tool) => !show(tool.key));
+
   async function downloadReport() {
     setReporting(true);
     try {
@@ -341,8 +395,8 @@ export function HistoryClient() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppHeader section="history" />
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 py-6 sm:py-8">
+      <AppHeader section="history" tabBar />
+      <main className="mx-auto w-full max-w-6xl flex-1 space-y-4 px-4 pt-6 pb-28 sm:py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-4xl tracking-tight">{t("history.title")}</h1>
@@ -363,6 +417,7 @@ export function HistoryClient() {
             {hasForeign && fx && (
               <p className="mt-0.5 text-xs text-muted">{t("fx.note", { currency, date: fx.date })}</p>
             )}
+            {insight && <InsightPill insight={insight} />}
           </div>
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 text-sm" title={t("fx.showIn")}>
@@ -388,9 +443,9 @@ export function HistoryClient() {
                 {t("sync.action", { count: pendingSync })}
               </button>
             )}
-            <button type="button" onClick={() => openScan()} className={buttonStyles.secondary}>
+            <button type="button" onClick={() => openScan()} className={`${buttonStyles.secondary} max-sm:hidden`}>
               <Camera className="size-4" aria-hidden />
-              <span className="hidden sm:inline">{t("scan.title")}</span>
+              {t("scan.title")}
             </button>
             {entries && entries.length > 0 && (
               <button
@@ -401,7 +456,7 @@ export function HistoryClient() {
                 className={buttonStyles.secondary}
               >
                 {reporting ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
-                <span className="hidden sm:inline">{t("report.button")}</span>
+                {t("report.button")}
               </button>
             )}
             {entries && entries.length > 0 && (
@@ -412,10 +467,10 @@ export function HistoryClient() {
                 className={buttonStyles.secondary}
               >
                 <Sparkles className="size-4" aria-hidden />
-                <span className="hidden sm:inline">{t("review.button")}</span>
+                {t("review.button")}
               </button>
             )}
-            <Link href="/studio" className={buttonStyles.primary}>
+            <Link href="/studio" className={`${buttonStyles.primary} max-sm:hidden`}>
               <Plus className="size-4" aria-hidden />
               {t("studio.newReceipt")}
             </Link>
@@ -542,16 +597,20 @@ export function HistoryClient() {
                 onSplit={(entry) => void openSplit(entry.id)}
               />
               <div className="space-y-4">
-                <FriendsCard entries={entries} currency={currency} onMarkPaid={(id, person) => void markPaid(id, person)} />
-                <WarrantyTracker entries={entries} today={today} />
-                <RecurringCard today={today} currency={currency} />
-                <TaxReliefCard entries={inCurrency} currency={currency} year={today.slice(0, 4)} />
+                {show("friends") && (
+                  <FriendsCard entries={entries} currency={currency} onMarkPaid={(id, person) => void markPaid(id, person)} />
+                )}
+                {show("warranty") && <WarrantyTracker entries={entries} today={today} />}
+                {show("recurring") && <RecurringCard today={today} currency={currency} />}
+                {show("tax") && <TaxReliefCard entries={inCurrency} currency={currency} year={today.slice(0, 4)} />}
+                <MoreTools tools={foldedTools} />
               </div>
             </div>
           </>
         )}
       </main>
       <BudgetsDialog currency={currency} open={budgetOpen} onClose={() => setBudgetOpen(false)} />
+      <MobileTabBar current="history" />
       {hydrated && <YearReviewDialog entries={inCurrency} currency={currency} today={today} />}
     </div>
   );

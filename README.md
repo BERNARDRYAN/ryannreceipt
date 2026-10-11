@@ -78,6 +78,10 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **Year review**: a receipt-style summary of the year, shareable as an image.
 - **Backup & restore** (Settings): download everything as a JSON file and restore it on any device.
   Signed-out users get a reminder every 30 days. The app-lock PIN is never included.
+- **On phones**: a bottom tab bar with a big **+** (Quick add, Scan, New receipt, Import CSV); swipe a
+  receipt right to split it, left to delete it (with Undo).
+- **History** groups receipts by day with daily totals, shows one spending insight (vs the same days
+  last month, or your logging streak), and folds tools you haven't used yet into **More tools**.
 - **Privacy & Terms**: `/privacy` and `/terms`, linked from the home page footer.
 
 ## Architecture

@@ -529,3 +529,76 @@ html[data-locked] body > :not([data-app-lock]) {
     color: var(--viz-accent);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Toasts: sit above the phone tab bar; slide in from below.
+ * ------------------------------------------------------------------------- */
+.toaster {
+  bottom: calc(1rem + var(--tabbar-h, 0px));
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+.toast-in {
+  animation: toast-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Category tiles: one calm hue per category, icon ≥3:1 on its tint in both themes.
+ * ------------------------------------------------------------------------- */
+.cat-tile {
+  --cat: light-dark(#57534e, #b5b0a6);
+  color: var(--cat);
+  background: color-mix(in oklab, var(--cat) 13%, var(--surface));
+}
+.cat-tile[data-cat="Food & Drink"] { --cat: light-dark(#c2410c, #fb8a5c); }
+.cat-tile[data-cat="Groceries"] { --cat: light-dark(#15803d, #4ade80); }
+.cat-tile[data-cat="Electronics"] { --cat: light-dark(#1d4ed8, #7aa7f5); }
+.cat-tile[data-cat="Transport"] { --cat: light-dark(#6d28d9, #a99bf5); }
+.cat-tile[data-cat="Shopping"] { --cat: light-dark(#be185d, #f17fb0); }
+.cat-tile[data-cat="Utilities"] { --cat: light-dark(#a16207, #f2b84b); }
+.cat-tile[data-cat="Health"] { --cat: light-dark(#b91c1c, #f47c7c); }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Phone tab bar and its bottom sheet.
+ * ------------------------------------------------------------------------- */
+@media (width < 40rem) {
+  body:has(.mobile-tabbar) {
+    --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+@keyframes sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+dialog.sheet[open] {
+  animation: sheet-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.sheet[open] {
+    animation: none;
+  }
+}
+
+/* Page-to-page crossfade (React <ViewTransition> in the root layout). */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 180ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

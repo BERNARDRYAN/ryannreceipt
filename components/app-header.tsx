@@ -18,7 +18,8 @@ const NAV = [
   { href: "/history", label: "nav.history", icon: History, key: "history" },
 ] as const;
 
-export function AppHeader({ section, actions }: { section: "studio" | "history"; actions?: ReactNode }) {
+/** `tabBar`: the page shows the phone tab bar, so nav and Quick add move there on small screens. */
+export function AppHeader({ section, actions, tabBar = false }: { section: "studio" | "history"; actions?: ReactNode; tabBar?: boolean }) {
   const t = useT();
   const setQuickAddOpen = useUiStore((s) => s.setQuickAddOpen);
   return (
@@ -28,7 +29,7 @@ export function AppHeader({ section, actions }: { section: "studio" | "history";
           <BrandMark className="size-6" />
           <span className="hidden font-mono text-sm font-bold tracking-tight md:inline">RyannReceipt</span>
         </Link>
-        <nav aria-label={t("nav.main")} className="flex items-center gap-0.5">
+        <nav aria-label={t("nav.main")} className={`flex items-center gap-0.5 ${tabBar ? "max-sm:hidden" : ""}`}>
           {NAV.map(({ href, label, icon: Icon, key }) => {
             const current = section === key;
             return (
@@ -53,7 +54,7 @@ export function AppHeader({ section, actions }: { section: "studio" | "history";
           onClick={() => setQuickAddOpen(true)}
           aria-label={t("quick.title")}
           title={`${t("quick.title")} (Alt+Q)`}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground ring-1 ring-border hover:bg-surface-muted"
+          className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-foreground ring-1 ring-border hover:bg-surface-muted ${tabBar ? "max-sm:hidden" : ""}`}
         >
           <Zap className="size-4 text-viz-accent" aria-hidden />
           <span className="hidden sm:inline">{t("quick.title")}</span>

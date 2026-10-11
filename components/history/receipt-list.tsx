@@ -6,9 +6,11 @@ import { useEffect, useId, useRef } from "react";
 
 import { inputClass } from "@/components/receipt/editor/fields";
 import { useMonthLabel } from "@/components/history/charts";
+import { SwipeRow } from "@/components/history/swipe-row";
+import { CategoryTile } from "@/components/quick-add/category-icons";
 import { downloadCsv, entriesToCsv } from "@/lib/history/csv";
-import type { HistoryEntry } from "@/lib/history/entries";
-import { useT, type MessageKey } from "@/lib/i18n/messages";
+import { todayKey, type HistoryEntry } from "@/lib/history/entries";
+import { INTL_LOCALE, useLocale, useT, type MessageKey } from "@/lib/i18n/messages";
 import { toast } from "@/lib/store/toast-store";
 import { useUiStore } from "@/lib/store/ui-store";
 import { formatAmount } from "@/lib/utils/currency";
@@ -16,27 +18,37 @@ import { CATEGORIES } from "@/lib/validators/receipt-schema";
 
 export type ListFilters = { query: string; category: string; month: string; day: string; wallet: string; tag: string };
 
-function formatDate(value: string) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : value;
-}
+type DayGroup = { key: string; label: string; entries: HistoryEntry[]; total: number | null };
 
-/** Tiny torn-edge slip with the merchant's initial, as a list thumbnail. */
-function ReceiptThumb({ name }: { name: string }) {
-  const initial = (name.trim()[0] ?? "R").toUpperCase();
-  return (
-    <span aria-hidden className="relative flex h-11 w-9 shrink-0 items-start justify-center pt-1.5">
-      <svg viewBox="0 0 36 44" className="absolute inset-0 size-full drop-shadow-sm">
-        <path
-          d="M2 1h32v38l-3.2 3-3.2-3-3.2 3-3.2-3-3.2 3-3.2-3-3.2 3-3.2-3L2 42z"
-          fill="#faf9f5"
-          stroke="rgba(0,0,0,0.08)"
-        />
-        <path d="M9 24h18M9 29h18M9 34h11" stroke="#1a1a1a" strokeOpacity=".35" strokeWidth="1.6" strokeLinecap="round" />
-      </svg>
-      <span className="relative font-mono text-xs font-bold text-[#1a1a1a]">{initial}</span>
-    </span>
-  );
+/**
+ * Pinned receipts first, then one group per day ("Today", "Yesterday",
+ * "Fri, 9 Oct") with the day's total when every receipt shares a currency.
+ */
+function groupByDay(entries: HistoryEntry[], today: string, intlLocale: string, t: ReturnType<typeof useT>): DayGroup[] {
+  const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+  const groups = new Map<string, DayGroup>();
+  const label = (day: string) => {
+    if (day === today) return t("list.today");
+    if (day === yesterday) return t("list.yesterday");
+    const [y, m, d] = day.split("-").map(Number);
+    return new Intl.DateTimeFormat(intlLocale, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      ...(day.slice(0, 4) !== today.slice(0, 4) && { year: "numeric" }),
+      timeZone: "UTC",
+    }).format(new Date(Date.UTC(y, m - 1, d)));
+  };
+  for (const e of entries) {
+    const key = e.isPinned ? "pinned" : e.receiptDate.slice(0, 10);
+    if (!groups.has(key)) groups.set(key, { key, label: key === "pinned" ? t("list.pinnedGroup") : label(key), entries: [], total: 0 });
+    groups.get(key)!.entries.push(e);
+  }
+  for (const g of groups.values()) {
+    const currencies = new Set(g.entries.map((e) => e.currency));
+    g.total = g.key !== "pinned" && currencies.size === 1 ? g.entries.reduce((sum, e) => sum + e.spent, 0) : null;
+  }
+  return [...groups.values()];
 }
 
 function RowMenu({
@@ -147,6 +159,7 @@ export function ReceiptList({
 }) {
   const t = useT();
   const ml = useMonthLabel();
+  const locale = useLocale();
   const q = filters.query.trim().toLowerCase();
   const visible = entries.filter(
     (e) =>
@@ -177,7 +190,7 @@ export function ReceiptList({
           {t("list.title")} <span className="font-normal text-muted">({visible.length})</span>
         </h2>
         <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
+          <label className="relative min-w-0 basis-full sm:w-56 sm:basis-auto sm:flex-none">
             <span className="sr-only">{t("list.search")}</span>
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted" aria-hidden />
             <input
@@ -229,7 +242,7 @@ export function ReceiptList({
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-muted ring-1 ring-border hover:bg-surface-muted hover:text-foreground"
           >
             <FileUp className="size-4" aria-hidden />
-            {t("import.button")}
+            <span className="max-sm:sr-only">{t("import.button")}</span>
           </button>
           <button
             type="button"
@@ -238,7 +251,7 @@ export function ReceiptList({
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-muted ring-1 ring-border hover:bg-surface-muted hover:text-foreground disabled:opacity-40"
           >
             <FileDown className="size-4" aria-hidden />
-            {t("list.exportCsv")}
+            <span className="max-sm:sr-only">{t("list.exportCsv")}</span>
           </button>
         </div>
       </div>
@@ -261,79 +274,101 @@ export function ReceiptList({
           )}
         </div>
       ) : (
-        <ul className="divide-y divide-border">
-          {visible.map((e) => (
-            <li key={e.id} className="flex items-center gap-2 px-2 sm:px-3">
-              <Link
-                href={`/studio?id=${e.id}`}
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-muted"
-              >
-                <ReceiptThumb name={e.merchantName} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-                    {e.isPinned && <Pin className="size-3.5 shrink-0 text-muted" aria-label={t("list.pinned")} />}
-                    <span className="truncate">{e.merchantName || t("list.untitled")}</span>
-                  </p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
-                    <span>{formatDate(e.receiptDate)}</span>
-                    <span aria-hidden>·</span>
-                    <span className="font-mono">{e.receiptNo}</span>
-                    <span aria-hidden>·</span>
-                    <span>{t(`cat.${e.category}` as MessageKey)}</span>
-                    {e.wallet && <span>{e.wallet}</span>}
-                    {e.tags
-                      .filter((tag) => tag !== "recurring")
-                      .slice(0, 3)
-                      .map((tag) => (
-                        <span key={tag}>#{tag}</span>
-                      ))}
-                    {e.split && (
-                      <span className="inline-flex items-center gap-0.5">
-                        <Users className="size-3" aria-hidden />
-                        {t("split.badge", {
-                          count: e.split.people.length,
-                          unpaid: e.split.people.filter((p) => !p.paid).length,
-                        })}
-                      </span>
-                    )}
-                    {e.warrantyUntil && (
-                      <span className="inline-flex items-center gap-0.5">
-                        <ShieldCheck className="size-3" aria-hidden />
-                        {t("list.warranty")}
-                      </span>
-                    )}
-                    {showSyncState && !e.synced && (
-                      <span className="inline-flex items-center gap-0.5 text-warning">
-                        <CloudOff className="size-3" aria-hidden />
-                        {t("list.deviceOnly")}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
-                  <span className="text-xs font-normal text-muted">{e.currency}</span> {formatAmount(e.spent, e.currency)}
-                  {convertTo && convertTo(e) !== null && (
-                    <span className="block text-[11px] font-normal text-muted">
-                      ≈ {homeCurrency} {formatAmount(convertTo(e)!, "MYR")}
+        <div>
+          {groupByDay(visible, todayKey(), INTL_LOCALE[locale], t).map((g) => (
+            <section key={g.key} aria-label={g.label}>
+              <h3 className="sticky top-0 z-[1] flex items-baseline justify-between border-b border-border bg-surface/95 px-4 pt-3 pb-1.5 text-xs font-semibold text-muted backdrop-blur sm:px-5">
+                <span className="tracking-wide uppercase">{g.label}</span>
+                {g.total !== null && (
+                  <span className="tabular-nums">
+                    {g.entries[0].currency} {formatAmount(g.total, g.entries[0].currency)}
+                  </span>
+                )}
+              </h3>
+              <ul className="divide-y divide-border">
+                {g.entries.map((e) => (
+                <SwipeRow
+                      key={e.id}
+                      className="flex items-center gap-2 px-2 sm:px-3"
+                      onSwipeLeft={() => onDelete(e)}
+                      onSwipeRight={() => onSplit(e)}
+                      leftLabel={t("list.delete")}
+                      rightLabel={t("split.button")}
+                    >
+                  <Link
+                    href={`/studio?id=${e.id}`}
+                    className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-muted"
+                  >
+                    <CategoryTile category={e.category} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                        {e.isPinned && <Pin className="size-3.5 shrink-0 text-muted" aria-label={t("list.pinned")} />}
+                        <span className="truncate">{e.merchantName || t("list.untitled")}</span>
+                      </p>
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted">
+                        <span>{t(`cat.${e.category}` as MessageKey)}</span>
+                        {e.wallet && (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>{e.wallet}</span>
+                          </>
+                        )}
+                        {e.tags
+                          .filter((tag) => tag !== "recurring")
+                          .slice(0, 3)
+                          .map((tag) => (
+                            <span key={tag}>#{tag}</span>
+                          ))}
+                        {e.split && (
+                          <span className="inline-flex items-center gap-0.5">
+                            <Users className="size-3" aria-hidden />
+                            {t("split.badge", {
+                              count: e.split.people.length,
+                              unpaid: e.split.people.filter((p) => !p.paid).length,
+                            })}
+                          </span>
+                        )}
+                        {e.warrantyUntil && (
+                          <span className="inline-flex items-center gap-0.5">
+                            <ShieldCheck className="size-3" aria-hidden />
+                            {t("list.warranty")}
+                          </span>
+                        )}
+                        {showSyncState && !e.synced && (
+                          <span className="inline-flex items-center gap-0.5 text-warning">
+                            <CloudOff className="size-3" aria-hidden />
+                            {t("list.deviceOnly")}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                      <span className="text-xs font-normal text-muted">{e.currency}</span> {formatAmount(e.spent, e.currency)}
+                      {convertTo && convertTo(e) !== null && (
+                        <span className="block text-[11px] font-normal text-muted">
+                          ≈ {homeCurrency} {formatAmount(convertTo(e)!, "MYR")}
+                        </span>
+                      )}
+                      {e.split && e.spent !== e.total && (
+                        <span className="block text-[11px] font-normal text-muted">
+                          {t("split.ofBill", { total: formatAmount(e.total, e.currency) })}
+                        </span>
+                      )}
                     </span>
-                  )}
-                  {e.split && e.spent !== e.total && (
-                    <span className="block text-[11px] font-normal text-muted">
-                      {t("split.ofBill", { total: formatAmount(e.total, e.currency) })}
-                    </span>
-                  )}
-                </span>
-              </Link>
-              <RowMenu
-                entry={e}
-                onPin={() => onPin(e)}
-                onDuplicate={() => onDuplicate(e)}
-                onDelete={() => onDelete(e)}
-                onSplit={() => onSplit(e)}
-              />
-            </li>
+                  </Link>
+                  <RowMenu
+                    entry={e}
+                    onPin={() => onPin(e)}
+                    onDuplicate={() => onDuplicate(e)}
+                    onDelete={() => onDelete(e)}
+                    onSplit={() => onSplit(e)}
+                  />
+                </SwipeRow>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );
