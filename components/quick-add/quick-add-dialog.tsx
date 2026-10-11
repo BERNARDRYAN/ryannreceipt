@@ -22,6 +22,7 @@ import { pushReceipts } from "@/lib/sync/cloud";
 import { computeTotals, formatAmount } from "@/lib/utils/currency";
 import {
   CATEGORIES,
+  CURRENCIES,
   PAYMENT_METHODS,
   type Category,
   type Currency,
@@ -63,8 +64,10 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
 
   const local = useMemo(() => Object.values(receipts), [receipts]);
   const memory = useMemo(() => buildMerchantMemory(local), [local]);
-  const currency: Currency =
+  const lastCurrency: Currency =
     [...local].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.draft.currency ?? "MYR";
+  const [currencyChoice, setCurrencyChoice] = useState<Currency | null>(null);
+  const currency = currencyChoice ?? lastCurrency;
 
   // One-tap repeats: recent single-item receipts, distinct by name + price.
   const recent = useMemo(() => {
@@ -208,7 +211,19 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
           />
         </label>
         <label className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted">{t("quick.amount", { currency })}</span>
+          <span className="flex items-center justify-between text-xs font-medium text-muted">
+            {t("quick.amountLabel")}
+            <select
+              aria-label={t("field.currency")}
+              value={currency}
+              onChange={(e) => setCurrencyChoice(e.target.value as Currency)}
+              className="rounded border-0 bg-transparent p-0 text-xs font-semibold text-foreground"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </span>
           <NumberInput
             value={fields.amount}
             decimals={2}

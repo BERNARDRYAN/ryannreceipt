@@ -541,4 +541,8 @@ export const en = {
   "pay.note": "Note",
   "pay.notePh": "e.g. Please pay by Friday 🙏",
   "remind.owed": "{name} still owes {amount} for {shop} ({n} days)",
+  // Travel mode
+  "quick.amountLabel": "Amount",
+  "fx.showIn": "Show amounts in",
+  "fx.note": "Other currencies converted to {currency} at ECB rates of {date}.",
 } as const;

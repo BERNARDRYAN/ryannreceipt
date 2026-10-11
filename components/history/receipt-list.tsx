@@ -124,7 +124,12 @@ export function ReceiptList({
   onDelete,
   onSplit,
   showSyncState,
+  convertTo,
+  homeCurrency,
 }: {
+  /** Travel mode: amount in the home currency for foreign receipts (null = same currency). */
+  convertTo?: (entry: HistoryEntry) => number | null;
+  homeCurrency?: string;
   entries: HistoryEntry[];
   /** Flag device-only receipts (only meaningful when signed in). */
   showSyncState: boolean;
@@ -294,6 +299,11 @@ export function ReceiptList({
                 </div>
                 <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
                   <span className="text-xs font-normal text-muted">{e.currency}</span> {formatAmount(e.spent, e.currency)}
+                  {convertTo && convertTo(e) !== null && (
+                    <span className="block text-[11px] font-normal text-muted">
+                      ≈ {homeCurrency} {formatAmount(convertTo(e)!, "MYR")}
+                    </span>
+                  )}
                   {e.split && e.spent !== e.total && (
                     <span className="block text-[11px] font-normal text-muted">
                       {t("split.ofBill", { total: formatAmount(e.total, e.currency) })}

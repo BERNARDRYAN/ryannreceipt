@@ -521,4 +521,8 @@ export const ms: Messages = {
   "pay.note": "Nota",
   "pay.notePh": "cth. Sila bayar sebelum Jumaat 🙏",
   "remind.owed": "{name} masih berhutang {amount} untuk {shop} ({n} hari)",
+  // Travel mode
+  "quick.amountLabel": "Jumlah",
+  "fx.showIn": "Tunjuk jumlah dalam",
+  "fx.note": "Mata wang lain ditukar kepada {currency} pada kadar ECB {date}.",
 };

@@ -519,4 +519,8 @@ export const zh: Messages = {
   "pay.note": "备注",
   "pay.notePh": "例如：请在星期五前付款 🙏",
   "remind.owed": "{name} 还欠 {amount}（{shop}，已 {n} 天）",
+  // Travel mode
+  "quick.amountLabel": "金额",
+  "fx.showIn": "金额显示为",
+  "fx.note": "其他货币已按 {date} 的欧洲央行汇率换算为 {currency}。",
 };

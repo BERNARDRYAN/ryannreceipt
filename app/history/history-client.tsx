@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CloudUpload, FileDown, HardDrive, LoaderCircle, Plus, ReceiptText } from "lucide-react";
+import { Camera, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -17,7 +17,6 @@ import { TaxReliefCard } from "@/components/history/tax-relief";
 import { WarrantyTracker } from "@/components/history/warranty-tracker";
 import { buttonStyles } from "@/components/ui/dialog";
 import {
-  dominantCurrency,
   fromLocal,
   lastMonths,
   mergeEntries,
@@ -29,6 +28,7 @@ import {
   type HistoryEntry,
 } from "@/lib/history/entries";
 import { translate, useT, type MessageKey } from "@/lib/i18n/messages";
+import { convert, useFxRates } from "@/lib/fx/rates";
 import { downloadMonthlyReport } from "@/lib/reports/pdf";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useSettingsHydrated, useSettingsStore } from "@/lib/store/settings-store";
@@ -64,7 +64,6 @@ export function HistoryClient() {
   const [cloud, setCloud] = useState<CloudSummary[] | null>(null);
   const [cloudError, setCloudError] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
-  const [currencyChoice, setCurrencyChoice] = useState<Currency | null>(null);
   // Empty = "current month"; the date is only read in the browser (prerender must stay deterministic).
   const [monthChoice, setMonthChoice] = useState("");
   const [filters, setFilters] = useState<ListFilters>(EMPTY_FILTERS);
@@ -73,6 +72,8 @@ export function HistoryClient() {
   const [reporting, setReporting] = useState(false);
   useSettingsHydrated();
   const budgets = useSettingsStore((s) => s.budgets);
+  const homeCurrency = useSettingsStore((s) => s.homeCurrency);
+  const setHomeCurrency = useSettingsStore((s) => s.setHomeCurrency);
   const categoryBudgets = useSettingsStore((s) => s.categoryBudgets);
   const openScan = useUiStore((s) => s.openScan);
   const uploading = useSyncState((s) => s.saving);
@@ -228,10 +229,18 @@ export function HistoryClient() {
   const today = hydrated ? todayKey() : "";
   const currentMonth = today.slice(0, 7);
   const selectedMonth = monthChoice || currentMonth;
-  const currency = currencyChoice ?? (entries && dominantCurrency(entries)) ?? "MYR";
-  const inCurrency = entries?.filter((e) => e.currency === currency) ?? [];
+  // Travel mode: everything is shown in the home currency; foreign receipts
+  // are converted at today's ECB reference rate (only if any exist).
+  const currency = homeCurrency;
+  const hasForeign = !!entries?.some((e) => e.currency !== currency);
+  const fx = useFxRates(hasForeign);
+  const inCurrency = (entries ?? []).flatMap((e) => {
+    if (e.currency === currency) return [e];
+    const spent = convert(e.spent, e.currency, currency, fx);
+    return spent === null ? [] : [{ ...e, spent, total: convert(e.total, e.currency, currency, fx) ?? e.total, currency }];
+  });
+  // Receipts we couldn't convert (rates not loaded yet / offline first visit).
   const otherCurrencyCount = (entries?.length ?? 0) - inCurrency.length;
-  const usedCurrencies = CURRENCIES.filter((c) => entries?.some((e) => e.currency === c));
 
   const months = currentMonth ? lastMonths(currentMonth, 6) : [];
   const totalsByMonth = sumBy(inCurrency, (e) => monthKey(e.receiptDate), (e) => e.spent);
@@ -346,22 +355,24 @@ export function HistoryClient() {
                 </>
               )}
             </p>
+            {hasForeign && fx && (
+              <p className="mt-0.5 text-xs text-muted">{t("fx.note", { currency, date: fx.date })}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            {usedCurrencies.length > 1 && (
-              <label className="text-sm">
-                <span className="sr-only">{t("history.currency")}</span>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrencyChoice(e.target.value as Currency)}
-                  className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-sm"
-                >
-                  {usedCurrencies.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label className="flex items-center gap-1.5 text-sm" title={t("fx.showIn")}>
+              <span className="sr-only">{t("fx.showIn")}</span>
+              <Globe className="size-4 text-muted" aria-hidden />
+              <select
+                value={currency}
+                onChange={(e) => setHomeCurrency(e.target.value as Currency)}
+                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </label>
             {signedIn && pendingSync > 0 && (
               <button type="button" onClick={handleSync} disabled={syncing} className={buttonStyles.secondary}>
                 {syncing ? (
@@ -503,6 +514,8 @@ export function HistoryClient() {
 
             <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
               <ReceiptList
+                convertTo={hasForeign ? (e) => (e.currency === currency ? null : convert(e.spent, e.currency, currency, fx)) : undefined}
+                homeCurrency={currency}
                 entries={entries}
                 showSyncState={signedIn}
                 filters={filters}
@@ -516,7 +529,7 @@ export function HistoryClient() {
                 <FriendsCard entries={entries} currency={currency} onMarkPaid={(id, person) => void markPaid(id, person)} />
                 <WarrantyTracker entries={entries} today={today} />
                 <RecurringCard today={today} currency={currency} />
-                <TaxReliefCard entries={entries} currency={currency} year={today.slice(0, 4)} />
+                <TaxReliefCard entries={inCurrency} currency={currency} year={today.slice(0, 4)} />
               </div>
             </div>
           </>
