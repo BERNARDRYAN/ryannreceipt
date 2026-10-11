@@ -243,14 +243,18 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
             {t("split.equally")}
           </button>
         </div>
-        <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
+        <ul className="max-h-72 space-y-2 overflow-y-auto p-0.5 pr-1">
           {draft.items
             .filter((item) => item.name.trim() || item.price > 0)
             .map((item) => {
               const shares = split.shares[item.id] ?? {};
               const assignedUnits = Object.values(shares).reduce((s, u) => s + u, 0);
               return (
-                <li key={item.id} className={`rounded-xl p-2.5 ring-1 ${assignedUnits ? "ring-border" : "ring-warning/50"}`}>
+                <li
+                  key={item.id}
+                  // A border (not a ring) so the scrolling list never clips the outline.
+                  className={`rounded-xl border p-2.5 ${assignedUnits ? "border-border" : "border-dashed border-warning/70 bg-warning/5"}`}
+                >
                   <div className="flex items-baseline justify-between gap-2 text-sm">
                     <span className="min-w-0 truncate font-medium">
                       {item.qty > 1 && <span className="text-muted">{item.qty}× </span>}
@@ -321,11 +325,16 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
                   {name(p.id, p.name)}
                   {p.isPayer && <span className="ml-1.5 text-xs font-normal text-muted">· {t("split.paidTheBill")}</span>}
                 </p>
-                <p className="truncate text-xs text-muted">
-                  {t("split.breakdown", {
-                    items: formatAmount(p.subtotal - p.discount, draft.currency),
-                    extra: formatAmount(p.serviceCharge + (draft.taxInclusive ? 0 : p.taxAmount), draft.currency),
-                  })}
+                <p className="text-xs leading-snug text-muted">
+                  {(() => {
+                    const extra = p.serviceCharge + (draft.taxInclusive ? 0 : p.taxAmount);
+                    // The payer also covers unassigned lines and rounding, so derive their food from the total.
+                    const food = p.isPayer ? p.total - extra : p.subtotal - p.discount;
+                    return t("split.breakdown", {
+                      items: formatAmount(food, draft.currency),
+                      extra: formatAmount(extra, draft.currency),
+                    });
+                  })()}
                 </p>
               </div>
               <span className="shrink-0 text-sm font-semibold tabular-nums">{money(p.total)}</span>
@@ -371,20 +380,21 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
           <Trash2 className="size-4" aria-hidden />
           {t("split.remove")}
         </button>
-        <div className="flex gap-2">
+        {/* Phones: two equal buttons filling the row, labels on one line. */}
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
           <button
             type="button"
             onClick={async () => {
               await navigator.clipboard.writeText(message);
               toast(t("split.copied"), { tone: "success" });
             }}
-            className={buttonStyles.secondary}
+            className={`${buttonStyles.secondary} h-10 whitespace-nowrap max-sm:px-2`}
           >
-            <Copy className="size-4" aria-hidden />
+            <Copy className="size-4 shrink-0" aria-hidden />
             {t("split.copy")}
           </button>
-          <button type="button" onClick={() => void shareMessage()} className={buttonStyles.primary}>
-            <MessageCircle className="size-4" aria-hidden />
+          <button type="button" onClick={() => void shareMessage()} className={`${buttonStyles.primary} h-10 whitespace-nowrap max-sm:px-2`}>
+            <MessageCircle className="size-4 shrink-0" aria-hidden />
             {t("split.send")}
           </button>
         </div>

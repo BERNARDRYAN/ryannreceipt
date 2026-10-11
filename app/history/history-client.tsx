@@ -419,14 +419,15 @@ export function HistoryClient() {
             )}
             {insight && <InsightPill insight={insight} />}
           </div>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 text-sm" title={t("fx.showIn")}>
+          {/* Phones: an even two-column grid (odd last item fills the row). */}
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+            <label className="flex items-center gap-1.5 text-sm max-sm:grow max-sm:basis-[calc(50%-0.25rem)]" title={t("fx.showIn")}>
               <span className="sr-only">{t("fx.showIn")}</span>
               <Globe className="size-4 text-muted" aria-hidden />
               <select
                 value={currency}
                 onChange={(e) => setHomeCurrency(e.target.value as Currency)}
-                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm"
+                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm max-sm:h-10 max-sm:min-w-0 max-sm:flex-1"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c}>{c}</option>
@@ -434,7 +435,7 @@ export function HistoryClient() {
               </select>
             </label>
             {signedIn && pendingSync > 0 && (
-              <button type="button" onClick={handleSync} disabled={syncing} className={buttonStyles.secondary}>
+              <button type="button" onClick={handleSync} disabled={syncing} className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}>
                 {syncing ? (
                   <LoaderCircle className="size-4 animate-spin" aria-hidden />
                 ) : (
@@ -453,7 +454,7 @@ export function HistoryClient() {
                 onClick={() => void downloadReport()}
                 disabled={reporting}
                 title={t("report.monthly", { month: ml(selectedMonth, true) })}
-                className={buttonStyles.secondary}
+                className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}
               >
                 {reporting ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
                 {t("report.button")}
@@ -464,7 +465,7 @@ export function HistoryClient() {
                 type="button"
                 onClick={() => useUiStore.getState().setReviewYear(today.slice(0, 4))}
                 title={t("review.title")}
-                className={buttonStyles.secondary}
+                className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}
               >
                 <Sparkles className="size-4" aria-hidden />
                 {t("review.button")}
