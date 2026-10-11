@@ -36,7 +36,7 @@ export const ms: Messages = {
   "menu.deleteData": "Padam data RyannReceipt saya",
   "delete.title": "Padam data RyannReceipt anda?",
   "delete.body":
-    "Ini memadam secara kekal semua resit dan pratetap dalam akaun awan RyannReceipt anda. Log masuk Ryann Suite anda (digunakan oleh RyannPace dan RyannPlan) tidak terjejas. Tindakan ini tidak boleh dibuat asal.",
+    "Ini memadam secara kekal semua resit dan pratetap dalam akaun awan RyannReceipt anda. Log masuk Ryann Suite anda tidak terjejas. Tindakan ini tidak boleh dibuat asal.",
   "delete.alsoLocal": "Kosongkan juga draf yang disimpan pada peranti ini",
   "delete.typeToConfirm": "Taip {word} untuk mengesahkan",
   "delete.confirm": "Padam semua",
@@ -348,7 +348,7 @@ export const ms: Messages = {
   "landing.s3Body": "PNG, PDF atau cetak. Setiap resit masuk ke Sejarah bersama ringkasan.",
   "landing.ctaTitle": "Resit pertama anda mengambil masa kira-kira seminit.",
   "landing.ctaBody": "Pasang daripada pelayar anda untuk digunakan luar talian, seperti aplikasi.",
-  "landing.footer": "RyannReceipt · sebahagian daripada Ryann Suite, bersama RyannPlan dan RyannPace.",
+  "landing.footer": "RyannReceipt · sebahagian daripada Ryann Suite.",
   "landing.contact": "Ada soalan atau maklum balas?",
   // Daily tracking: quick add, scan, photos, wallets, tags, relief, recurring, reminders
   "quick.title": "Tambah pantas",

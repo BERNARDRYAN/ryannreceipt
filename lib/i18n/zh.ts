@@ -36,7 +36,7 @@ export const zh: Messages = {
   "menu.deleteData": "删除我的 RyannReceipt 数据",
   "delete.title": "删除你的 RyannReceipt 数据？",
   "delete.body":
-    "这会永久删除你 RyannReceipt 云端账户中的所有收据和预设。你的 Ryann Suite 登录（RyannPace 和 RyannPlan 共用）不受影响。此操作无法撤销。",
+    "这会永久删除你 RyannReceipt 云端账户中的所有收据和预设。你的 Ryann Suite 登录不受影响。此操作无法撤销。",
   "delete.alsoLocal": "同时清除本设备上的草稿",
   "delete.typeToConfirm": "输入 {word} 以确认",
   "delete.confirm": "全部删除",
@@ -346,7 +346,7 @@ export const zh: Messages = {
   "landing.s3Body": "PNG、PDF 或打印。每张收据都会进入记录，附带统计。",
   "landing.ctaTitle": "第一张收据大约一分钟就能完成。",
   "landing.ctaBody": "从浏览器安装后可离线使用，就像一个应用。",
-  "landing.footer": "RyannReceipt · Ryann Suite 的一员，与 RyannPlan 和 RyannPace 同属一系。",
+  "landing.footer": "RyannReceipt · Ryann Suite 的一员。",
   "landing.contact": "有问题或建议？",
   // Daily tracking: quick add, scan, photos, wallets, tags, relief, recurring, reminders
   "quick.title": "快速记账",

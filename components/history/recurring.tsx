@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { CATEGORY_ICONS } from "@/components/quick-add/category-icons";
 import { inputClass, NumberInput } from "@/components/receipt/editor/fields";
+import { Combobox } from "@/components/ui/combobox";
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
 import { INTL_LOCALE, useLocale, useT, type MessageKey } from "@/lib/i18n/messages";
 import { COMMON_WALLETS } from "@/lib/quick-add/keywords";
@@ -128,18 +129,13 @@ function RuleForm({ initial, onClose }: { initial: RecurringRule; onClose: () =>
         </label>
         <label className="space-y-1.5">
           <span className="block text-xs font-medium text-muted">{t("field.wallet")}</span>
-          <input
+          <Combobox
             className={inputClass}
-            list="recurring-wallets"
             maxLength={30}
             value={rule.wallet}
-            onChange={(e) => set("wallet", e.target.value)}
+            onChange={(v) => set("wallet", v)}
+            options={COMMON_WALLETS.map((value) => ({ value }))}
           />
-          <datalist id="recurring-wallets">
-            {COMMON_WALLETS.map((w) => (
-              <option key={w} value={w} />
-            ))}
-          </datalist>
         </label>
         <label className="col-span-2 space-y-1.5">
           <span className="block text-xs font-medium text-muted">{t("recurring.start")}</span>

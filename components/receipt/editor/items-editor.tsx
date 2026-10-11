@@ -4,6 +4,7 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { fieldDomId, Group, inputClass, NumberInput } from "@/components/receipt/editor/fields";
+import { Combobox } from "@/components/ui/combobox";
 import { useT } from "@/lib/i18n/messages";
 import { buildItemMemory, normalizeName } from "@/lib/memory/merchants";
 import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
@@ -32,6 +33,7 @@ export function ItemsEditor() {
 
   if (!draft) return null;
   const { items, currency } = draft;
+  const itemOptions = [...known.values()].map((k) => ({ value: k.name, hint: formatAmount(k.price, currency) }));
   const decimals = currencyDecimals(currency);
 
   function handleAdd() {
@@ -127,9 +129,9 @@ export function ItemsEditor() {
             >
               <GripVertical className="size-4" aria-hidden />
             </button>
-            <input
+            <Combobox
               id={fieldDomId(`item-${item.id}`)}
-              ref={(el) => {
+              inputRef={(el) => {
                 if (el) nameRefs.current.set(item.id, el);
                 else nameRefs.current.delete(item.id);
               }}
@@ -139,12 +141,16 @@ export function ItemsEditor() {
               className={inputClass}
               maxLength={80}
               value={item.name}
-              list="item-memory"
-              onChange={(e) => {
-                const name = e.target.value;
+              options={itemOptions}
+              minChars={1}
+              onChange={(name) => {
                 const match = known.get(normalizeName(name));
                 // Picking a known item fills its last price if none is set yet.
                 updateItem(item.id, match && item.price === 0 ? { name, price: match.price } : { name });
+              }}
+              onPick={(option) => {
+                const match = known.get(normalizeName(option.value));
+                if (match) updateItem(item.id, { name: match.name, price: match.price });
               }}
               onKeyDown={(e) => handleEnter(e, index)}
             />
@@ -182,13 +188,6 @@ export function ItemsEditor() {
           </li>
         ))}
       </ul>
-      <datalist id="item-memory">
-        {[...known.values()].slice(0, 200).map((k) => (
-          <option key={k.name} value={k.name}>
-            {formatAmount(k.price, currency)}
-          </option>
-        ))}
-      </datalist>
       {items.length > 0 && (
         <div className="flex items-center justify-between gap-3">
           <p className="text-[11px] text-muted">{t("items.tip")}</p>

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { CATEGORY_ICONS } from "@/components/quick-add/category-icons";
 import { inputClass, NumberInput } from "@/components/receipt/editor/fields";
+import { Combobox } from "@/components/ui/combobox";
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
 import { todayKey } from "@/lib/history/entries";
 import { useT, type MessageKey } from "@/lib/i18n/messages";
@@ -140,6 +141,9 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   }
 
   const canSave = fields.amount > 0 && !!fields.name.trim();
+  const walletOptions = [...new Set([...local.map((r) => r.draft.wallet).filter(Boolean), ...COMMON_WALLETS])].map(
+    (value) => ({ value }),
+  );
 
   return (
     <form
@@ -252,18 +256,13 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
         </label>
         <label className="space-y-1.5">
           <span className="block text-xs font-medium text-muted">{t("field.wallet")}</span>
-          <input
+          <Combobox
             className={inputClass}
-            list="quick-wallets"
             maxLength={30}
             value={fields.wallet}
-            onChange={(e) => edit("wallet", e.target.value)}
+            onChange={(v) => edit("wallet", v)}
+            options={walletOptions}
           />
-          <datalist id="quick-wallets">
-            {COMMON_WALLETS.map((w) => (
-              <option key={w} value={w} />
-            ))}
-          </datalist>
         </label>
         <label className="space-y-1.5">
           <span className="block text-xs font-medium text-muted">{t("quick.date")}</span>

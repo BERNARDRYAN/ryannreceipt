@@ -16,6 +16,7 @@ import {
 import { LogoField } from "@/components/receipt/editor/logo-field";
 import { LookPicker } from "@/components/receipt/editor/look-picker";
 import { PresetsDialog } from "@/components/receipt/editor/presets-dialog";
+import { Combobox } from "@/components/ui/combobox";
 import { MerchantInput, PhotoField, TagsInput } from "@/components/receipt/editor/smart-fields";
 import { usedValues } from "@/lib/memory/merchants";
 import { COMMON_WALLETS } from "@/lib/quick-add/keywords";
@@ -255,22 +256,15 @@ export function PaymentStep() {
         </Field>
         <Field label={t("field.wallet")} hint={t("hint.wallet")} fieldId="wallet">
           {(id) => (
-            <>
-              <input
-                id={id}
-                list="wallet-suggestions"
-                className={inputClass}
-                maxLength={30}
-                placeholder={t("field.walletPh")}
-                value={draft.wallet}
-                onChange={(e) => setField("wallet", e.target.value)}
-              />
-              <datalist id="wallet-suggestions">
-                {used.wallets.map((w) => (
-                  <option key={w} value={w} />
-                ))}
-              </datalist>
-            </>
+            <Combobox
+              id={id}
+              className={inputClass}
+              maxLength={30}
+              placeholder={t("field.walletPh")}
+              value={draft.wallet}
+              onChange={(v) => setField("wallet", v)}
+              options={used.wallets.map((w) => ({ value: w }))}
+            />
           )}
         </Field>
         {isCash && (

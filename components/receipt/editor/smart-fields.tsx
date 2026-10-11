@@ -4,6 +4,7 @@ import { Camera, History, LoaderCircle, Trash2, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { fieldDomId, inputClass } from "@/components/receipt/editor/fields";
+import { Combobox } from "@/components/ui/combobox";
 import { useT } from "@/lib/i18n/messages";
 import { buildMerchantMemory, suggestMerchants, type MerchantMemory } from "@/lib/memory/merchants";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -134,7 +135,6 @@ export function TagsInput({
 }) {
   const t = useT();
   const [draft, setDraft] = useState("");
-  const listId = useId();
 
   function add(raw: string) {
     const tag = raw.trim().replace(/^#/, "").toLowerCase().slice(0, 24);
@@ -158,15 +158,16 @@ export function TagsInput({
           </button>
         </span>
       ))}
-      <input
+      <Combobox
         id={id}
-        list={listId}
         value={draft}
         placeholder={value.length ? "" : t("tags.placeholder")}
-        onChange={(e) => {
-          if (e.target.value.endsWith(",")) add(e.target.value.slice(0, -1));
-          else setDraft(e.target.value);
+        options={suggestions.filter((s) => !value.includes(s)).map((s) => ({ value: s }))}
+        onChange={(v) => {
+          if (v.endsWith(",")) add(v.slice(0, -1));
+          else setDraft(v);
         }}
+        onPick={(option) => add(option.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -178,13 +179,6 @@ export function TagsInput({
         onBlur={() => add(draft)}
         className="min-w-20 flex-1 bg-transparent text-sm outline-none"
       />
-      <datalist id={listId}>
-        {suggestions
-          .filter((s) => !value.includes(s))
-          .map((s) => (
-            <option key={s} value={s} />
-          ))}
-      </datalist>
     </div>
   );
 }

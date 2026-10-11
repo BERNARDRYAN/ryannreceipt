@@ -41,7 +41,7 @@ export const en = {
   "menu.deleteData": "Delete my RyannReceipt data",
   "delete.title": "Delete your RyannReceipt data?",
   "delete.body":
-    "This permanently deletes every receipt and preset in your RyannReceipt cloud account. Your Ryann Suite sign-in (used by RyannPace and RyannPlan) is not affected. This can't be undone.",
+    "This permanently deletes every receipt and preset in your RyannReceipt cloud account. Your Ryann Suite sign-in is not affected. This can't be undone.",
   "delete.alsoLocal": "Also clear drafts saved on this device",
   "delete.typeToConfirm": "Type {word} to confirm",
   "delete.confirm": "Delete everything",
@@ -368,7 +368,7 @@ export const en = {
   "landing.s3Body": "PNG, PDF or print. Every receipt lands in History with summaries.",
   "landing.ctaTitle": "Your first receipt takes about a minute.",
   "landing.ctaBody": "Install it from your browser to use it offline, like an app.",
-  "landing.footer": "RyannReceipt · part of the Ryann Suite, alongside RyannPlan and RyannPace.",
+  "landing.footer": "RyannReceipt · part of the Ryann Suite.",
   "landing.contact": "Questions or feedback?",
   // Daily tracking: quick add, scan, photos, wallets, tags, relief, recurring, reminders
   "quick.title": "Quick add",
