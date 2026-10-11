@@ -12,6 +12,7 @@ import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
 import { MoreTools, type Tool } from "@/components/history/more-tools";
 import { RepeatSuggestions } from "@/components/history/repeat-suggestions";
+import { WelcomeSetup } from "@/components/history/welcome-setup";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { EditExpenseDialog } from "@/components/quick-add/quick-add-dialog";
 import { friendBalances, FriendsCard } from "@/components/history/owed";
@@ -151,7 +152,9 @@ export function HistoryClient() {
   const entries: HistoryEntry[] | null = useMemo(() => {
     if (!hydrated || authStatus === "loading") return null;
     // Cloud failed to load: fall back to what this device has.
-    const all = signedIn && cloud && !cloudError ? mergeEntries(cloud, local) : local.map(fromLocal);
+    // Untitled drafts left empty in the receipt maker aren't spending.
+    const real = local.filter((r) => r.draft.merchantName.trim() || r.draft.items.some((i) => i.name.trim() || i.price > 0));
+    const all = signedIn && cloud && !cloudError ? mergeEntries(cloud, real) : real.map(fromLocal);
     return sortEntries(all.filter((e) => !hidden.has(e.id)));
   }, [hydrated, authStatus, signedIn, cloud, cloudError, local, hidden]);
 
@@ -738,6 +741,7 @@ export function HistoryClient() {
           if (entry) handleDelete(entry);
         }}
       />
+      <WelcomeSetup />
       <MobileTabBar current="history" />
       {hydrated && <YearReviewDialog entries={inCurrency} currency={currency} today={today} />}
     </div>

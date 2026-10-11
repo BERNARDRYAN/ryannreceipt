@@ -6,6 +6,7 @@ export const RETURNING_PREFS = {
     locale: "en",
     theme: "system",
     guideDone: true,
+    setupDone: true,
     templatesSeen: true,
     signInBannerDismissed: true,
     budgets: {},

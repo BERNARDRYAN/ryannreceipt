@@ -16,6 +16,7 @@ import { parseQuickAdd, type QuickParse } from "@/lib/quick-add/parse";
 import { createBlankDraft } from "@/lib/receipts/defaults";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useReceiptStore } from "@/lib/store/receipt-store";
+import { useSettingsStore } from "@/lib/store/settings-store";
 import { toast } from "@/lib/store/toast-store";
 import { useUiStore } from "@/lib/store/ui-store";
 import { pushReceipts } from "@/lib/sync/cloud";
@@ -100,8 +101,11 @@ function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: Edi
 
   const local = useMemo(() => Object.values(receipts), [receipts]);
   const memory = useMemo(() => buildMerchantMemory(local), [local]);
+  const homeCurrency = useSettingsStore((s) => s.homeCurrency);
+  // The currency of the last real expense, else the one picked in setup.
   const lastCurrency: Currency =
-    [...local].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.draft.currency ?? "MYR";
+    [...local].filter((r) => r.draft.merchantName.trim()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.draft
+      .currency ?? homeCurrency;
   const [currencyChoice, setCurrencyChoice] = useState<Currency | null>(original?.currency ?? null);
   const currency = currencyChoice ?? lastCurrency;
 

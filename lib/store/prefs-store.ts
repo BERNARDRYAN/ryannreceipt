@@ -45,6 +45,9 @@ type PrefsStore = {
   /** Repeating-bill suggestions the user said no to (detect.ts keys). */
   dismissedRepeats: string[];
   dismissRepeat: (key: string) => void;
+  /** First-visit Home setup (currency, budget) finished or skipped. */
+  setupDone: boolean;
+  setSetupDone: () => void;
 
   setLocale: (locale: Locale) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -80,6 +83,8 @@ export const usePrefsStore = create<PrefsStore>()(
       lastBackupAt: "",
       setLastBackupAt: (lastBackupAt) => set({ lastBackupAt }),
       dismissedRepeats: [],
+      setupDone: false,
+      setSetupDone: () => set({ setupDone: true }),
       dismissRepeat: (key) => set((s) => ({ dismissedRepeats: [key, ...s.dismissedRepeats.filter((k) => k !== key)].slice(0, 50) })),
 
       setLocale: (locale) => set({ locale }),
@@ -105,7 +110,7 @@ export const usePrefsStore = create<PrefsStore>()(
       name: PREFS_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock, lastBackupAt, dismissedRepeats }) => ({
+      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock, lastBackupAt, dismissedRepeats, setupDone }) => ({
         locale,
         theme,
         guideDone,
@@ -116,6 +121,7 @@ export const usePrefsStore = create<PrefsStore>()(
         lock,
         lastBackupAt,
         dismissedRepeats,
+        setupDone,
       }),
       // First visit: nothing stored yet, so adopt the browser language.
       merge: (persisted, current) =>
