@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeTotals, formatAmount, formatInputAmount, lineTotal } from "@/lib/utils/currency";
+import { cleanAmountInput, computeTotals, formatAmount, formatInputAmount, lineTotal } from "@/lib/utils/currency";
 
 const item = (qty: number, price: number) => ({ id: crypto.randomUUID(), name: "x", qty, price });
 
@@ -90,5 +90,22 @@ describe("formatting", () => {
     expect(formatAmount(1234.5, "JPY")).toBe("1,235");
     expect(formatInputAmount(2.8, "MYR")).toBe("2.80");
     expect(lineTotal({ qty: 3, price: 1.1 }, "MYR")).toBe(3.3);
+  });
+});
+
+describe("cleanAmountInput", () => {
+  it("keeps one decimal point and two places", () => {
+    expect(cleanAmountInput("9900.00000", 2)).toBe("9900.00");
+    expect(cleanAmountInput("2.345", 2)).toBe("2.34");
+    expect(cleanAmountInput("12,5", 2)).toBe("12.5");
+    expect(cleanAmountInput("1.2.3", 2)).toBe("1.23");
+    expect(cleanAmountInput(".5", 2)).toBe("0.5");
+    expect(cleanAmountInput("RM 007", 2)).toBe("7");
+    expect(cleanAmountInput("12.", 2)).toBe("12.");
+  });
+
+  it("drops decimals for currencies without cents and caps the size", () => {
+    expect(cleanAmountInput("15000.75", 0)).toBe("15000");
+    expect(cleanAmountInput("12345678901", 2)).toBe("123456789");
   });
 });

@@ -611,3 +611,11 @@ dialog.sheet[open] {
     font-size: 16px;
   }
 }
+
+/* Sideways chip rows scroll by swipe or trackpad, without a chunky scrollbar. */
+.scroll-row {
+  scrollbar-width: none;
+}
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}

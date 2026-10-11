@@ -11,7 +11,7 @@ import { usePrefsHydrated, usePrefsStore } from "@/lib/store/prefs-store";
 import { useLibraryHydrated, useReceiptStore, type LocalReceipt } from "@/lib/store/receipt-store";
 import { useSettingsStore } from "@/lib/store/settings-store";
 import { useUiStore } from "@/lib/store/ui-store";
-import { formatAmount } from "@/lib/utils/currency";
+import { cleanAmountInput, currencyDecimals, formatAmount } from "@/lib/utils/currency";
 import { CURRENCIES, type Currency } from "@/lib/validators/receipt-schema";
 
 const SAMPLE_SHOP = createSampleDraft().merchantName;
@@ -118,7 +118,7 @@ export function WelcomeSetup() {
               inputMode="decimal"
               placeholder="0"
               value={budget}
-              onChange={(e) => setBudget(e.target.value.replace(/[^\d.,]/g, "").slice(0, 10))}
+              onChange={(e) => setBudget(cleanAmountInput(e.target.value, currencyDecimals(currency)))}
               className="w-full min-w-0 bg-transparent text-center text-3xl font-semibold tabular-nums outline-none placeholder:text-muted/40"
             />
           </div>

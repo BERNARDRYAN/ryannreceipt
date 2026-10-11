@@ -20,7 +20,7 @@ import { useSettingsStore } from "@/lib/store/settings-store";
 import { toast } from "@/lib/store/toast-store";
 import { useUiStore } from "@/lib/store/ui-store";
 import { pushReceipts } from "@/lib/sync/cloud";
-import { computeTotals, formatAmount } from "@/lib/utils/currency";
+import { cleanAmountInput, computeTotals, currencyDecimals, formatAmount } from "@/lib/utils/currency";
 import {
   CATEGORIES,
   CURRENCIES,
@@ -264,7 +264,7 @@ function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: Edi
           value={amountShown}
           readOnly={!simple}
           onChange={(e) => {
-            const v = e.target.value.replace(/[^\d.,]/g, "").slice(0, 10);
+            const v = cleanAmountInput(e.target.value, currencyDecimals(currency));
             setAmountText(v);
             edit("amount", parseAmountText(v));
           }}
@@ -298,7 +298,7 @@ function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: Edi
       {!target && recent.length > 0 && !text && !amountShown && (
         <div>
           <p className="mb-1.5 text-[11px] font-medium text-muted">{t("quick.again")}</p>
-          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+          <div className="scroll-row -mx-1 flex gap-1.5 overflow-x-auto px-1 py-1">
             {recent.map((d) => (
               <button
                 key={`${d.items[0].name}-${d.items[0].price}`}
@@ -327,7 +327,7 @@ function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: Edi
       <div
         role="radiogroup"
         aria-label={t("field.category")}
-        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+        className="scroll-row -mx-1 flex gap-1.5 overflow-x-auto px-1 py-1"
       >
         {categories.map((c) => {
           const Icon = CATEGORY_ICONS[c];
@@ -527,7 +527,7 @@ function IncomeForm({ onDone }: { onDone: () => void }) {
           inputMode="decimal"
           placeholder="0.00"
           value={amountText}
-          onChange={(e) => setAmountText(e.target.value.replace(/[^\d.,]/g, "").slice(0, 12))}
+          onChange={(e) => setAmountText(cleanAmountInput(e.target.value, currencyDecimals(currency)))}
           className="w-full min-w-0 bg-transparent text-center text-4xl font-semibold tracking-tight tabular-nums outline-none placeholder:text-muted/40"
         />
       </div>

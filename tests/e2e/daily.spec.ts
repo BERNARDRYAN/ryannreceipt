@@ -108,3 +108,14 @@ test("the reminders bell lists what needs attention", async ({ page }) => {
   await page.getByRole("button", { name: /^Reminders \(\d+\)/ }).click();
   await expect(page.getByText(/warranty ends in \d+ day/)).toBeVisible();
 });
+
+test("amounts keep at most two decimal places", async ({ page }) => {
+  await page.goto("/history");
+  await page.getByRole("button", { name: "Quick add" }).first().click();
+  const amount = page.getByLabel("Amount", { exact: true });
+  await amount.pressSequentially("9900.00000");
+  await expect(amount).toHaveValue("9900.00");
+  await amount.fill("");
+  await amount.pressSequentially("2.345");
+  await expect(amount).toHaveValue("2.34");
+});

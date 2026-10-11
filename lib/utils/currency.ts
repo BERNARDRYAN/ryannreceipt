@@ -100,3 +100,17 @@ export function computeTotals(input: TotalsInput): ReceiptTotals {
     change: fromMinor(changeMinor, currency),
   };
 }
+
+/**
+ * Tidy what's typed into an amount box: digits and one decimal point ("," counts
+ * as "."), at most `decimals` places (none for JPY, IDR…) and 9 whole digits.
+ * "12,345" → "12.34", "9900.00000" → "9900.00", "007" → "7".
+ */
+export function cleanAmountInput(raw: string, decimals: number) {
+  const s = raw.replace(/,/g, ".").replace(/[^\d.]/g, "");
+  const dot = s.indexOf(".");
+  let whole = (dot === -1 ? s : s.slice(0, dot)).slice(0, 9).replace(/^0+(?=\d)/, "");
+  if (dot === -1 || decimals === 0) return whole;
+  if (!whole) whole = "0";
+  return `${whole}.${s.slice(dot + 1).replace(/\./g, "").slice(0, decimals)}`;
+}
