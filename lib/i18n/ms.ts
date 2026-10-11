@@ -666,4 +666,10 @@ export const ms: Messages = {
   "edit.saved": "Perubahan disimpan",
   "edit.itemised": "Resit berbutir: tukar item dan caj dalam pembuat resit.",
   "edit.openReceipt": "Buka sebagai resit",
+  "repeat.title": "Bil berulang",
+  "repeat.title2": "{name} nampak seperti bil bulanan",
+  "repeat.detail": "Kira-kira {amount} sekitar hari ke-{day}. Rekod secara automatik setiap bulan?",
+  "repeat.yes": "Ya",
+  "repeat.no": "Bukan bil bulanan: {name}",
+  "repeat.added": "{name} kini akan direkod sendiri setiap bulan (lihat Berulang).",
 };

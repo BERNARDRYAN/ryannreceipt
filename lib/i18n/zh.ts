@@ -665,4 +665,10 @@ export const zh: Messages = {
   "edit.saved": "已保存",
   "edit.itemised": "这是逐项收据：请在收据制作中修改商品和费用。",
   "edit.openReceipt": "打开收据",
+  "repeat.title": "重复账单",
+  "repeat.title2": "{name} 看起来是每月账单",
+  "repeat.detail": "约 {amount}，每月 {day} 号左右。要每月自动记录吗？",
+  "repeat.yes": "好的",
+  "repeat.no": "不是每月账单：{name}",
+  "repeat.added": "{name} 以后每月会自动记录（见“定期开销”）。",
 };

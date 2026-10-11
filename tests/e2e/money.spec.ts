@@ -231,3 +231,23 @@ test("tap an expense to edit it in the simple sheet", async ({ page }) => {
   await sheet.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("link", { name: /Ryann Kopitiam/ })).toHaveCount(0);
 });
+
+test("a bill paid two months in a row is offered as recurring", async ({ page }) => {
+  await page.goto("/history");
+  const d = new Date();
+  const lastMonth = new Date(d.getFullYear(), d.getMonth() - 1, Math.min(d.getDate(), 28));
+  const ymd = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+  // Last month's bill, dated through "Paid with".
+  await page.getByRole("button", { name: "Quick add" }).first().click();
+  await page.getByLabel("Expense", { exact: true }).fill("unifi 139 card");
+  await page.getByRole("button", { name: /^Paid with/ }).click();
+  await page.getByLabel("Date", { exact: true }).fill(ymd(lastMonth));
+  await addButton(page).click();
+  await quickAdd(page, "unifi 139 card");
+
+  await expect(page.getByText("Unifi looks like a monthly bill")).toBeVisible();
+  await page.getByRole("button", { name: "Yes", exact: true }).click();
+  await expect(page.getByText(/Unifi will now log itself each month/)).toBeVisible();
+  await expect(page.getByText("Unifi looks like a monthly bill")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Recurring" })).toBeVisible();
+});

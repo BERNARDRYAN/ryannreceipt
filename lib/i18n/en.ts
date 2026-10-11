@@ -686,4 +686,10 @@ export const en = {
   "edit.saved": "Changes saved",
   "edit.itemised": "Itemised receipt: change items and charges in the receipt maker.",
   "edit.openReceipt": "Open as receipt",
+  "repeat.title": "Repeating bills",
+  "repeat.title2": "{name} looks like a monthly bill",
+  "repeat.detail": "About {amount}, usually on day {day} of the month. Log it automatically each month?",
+  "repeat.yes": "Yes",
+  "repeat.no": "Not a monthly bill: {name}",
+  "repeat.added": "{name} will now log itself each month (see Recurring).",
 } as const;

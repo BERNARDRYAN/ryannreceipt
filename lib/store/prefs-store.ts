@@ -42,6 +42,9 @@ type PrefsStore = {
   /** When this device last downloaded a backup ("" = never). */
   lastBackupAt: string;
   setLastBackupAt: (iso: string) => void;
+  /** Repeating-bill suggestions the user said no to (detect.ts keys). */
+  dismissedRepeats: string[];
+  dismissRepeat: (key: string) => void;
 
   setLocale: (locale: Locale) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -76,6 +79,8 @@ export const usePrefsStore = create<PrefsStore>()(
       setLock: (lock) => set({ lock }),
       lastBackupAt: "",
       setLastBackupAt: (lastBackupAt) => set({ lastBackupAt }),
+      dismissedRepeats: [],
+      dismissRepeat: (key) => set((s) => ({ dismissedRepeats: [key, ...s.dismissedRepeats.filter((k) => k !== key)].slice(0, 50) })),
 
       setLocale: (locale) => set({ locale }),
       setTheme: (theme) => set({ theme }),
@@ -100,7 +105,7 @@ export const usePrefsStore = create<PrefsStore>()(
       name: PREFS_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock, lastBackupAt }) => ({
+      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock, lastBackupAt, dismissedRepeats }) => ({
         locale,
         theme,
         guideDone,
@@ -110,6 +115,7 @@ export const usePrefsStore = create<PrefsStore>()(
         lastSerial,
         lock,
         lastBackupAt,
+        dismissedRepeats,
       }),
       // First visit: nothing stored yet, so adopt the browser language.
       merge: (persisted, current) =>

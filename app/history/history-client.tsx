@@ -11,6 +11,7 @@ import { BudgetsDialog } from "@/components/history/budgets-dialog";
 import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
 import { MoreTools, type Tool } from "@/components/history/more-tools";
+import { RepeatSuggestions } from "@/components/history/repeat-suggestions";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
 import { EditExpenseDialog } from "@/components/quick-add/quick-add-dialog";
 import { friendBalances, FriendsCard } from "@/components/history/owed";
@@ -635,6 +636,8 @@ export function HistoryClient() {
               </span>
               <kbd className="hidden rounded-md px-1.5 py-0.5 font-mono text-[11px] text-muted ring-1 ring-border sm:inline">Alt+Q</kbd>
             </button>
+
+            <RepeatSuggestions entries={entries} today={today} />
 
             <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
               <ReceiptList
