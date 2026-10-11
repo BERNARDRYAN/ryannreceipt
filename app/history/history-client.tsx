@@ -146,6 +146,12 @@ export function HistoryClient() {
     setHidden((prev) => new Set(prev).add(entry.id));
     const inCloud = signedIn && (cloud?.some((c) => c.id === entry.id) ?? false);
 
+    const unhide = () =>
+      setHidden((prev) => {
+        const next = new Set(prev);
+        next.delete(entry.id);
+        return next;
+      });
     const timer = window.setTimeout(async () => {
       pendingTimers.delete(entry.id);
       useReceiptStore.getState().deleteReceipt(entry.id);
@@ -155,13 +161,11 @@ export function HistoryClient() {
           setCloud((prev) => prev?.filter((c) => c.id !== entry.id) ?? prev);
         } catch {
           toast(t("history.deleteFailed"), { tone: "error" });
-          setHidden((prev) => {
-            const next = new Set(prev);
-            next.delete(entry.id);
-            return next;
-          });
         }
       }
+      // Gone for good (or the delete failed): stop hiding the id, so a restored
+      // or re-synced copy shows up again.
+      unhide();
     }, UNDO_MS);
     pendingTimers.set(entry.id, timer);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarClock, CircleAlert, HandCoins, PiggyBank, ShieldAlert, Zap } from "lucide-react";
+import { Bell, CalendarClock, CircleAlert, DatabaseBackup, HandCoins, PiggyBank, ShieldAlert, Zap } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 
@@ -8,12 +8,14 @@ import { menuLabelClass, useAnchoredPopover } from "@/components/ui/use-anchored
 import { dominantCurrency, fromLocal, todayKey, warrantyState } from "@/lib/history/entries";
 import { useT } from "@/lib/i18n/messages";
 import { nextDueDate } from "@/lib/recurring/schedule";
+import { useAuthStore } from "@/lib/store/auth-store";
+import { usePrefsStore } from "@/lib/store/prefs-store";
 import { useLibraryHydrated, useReceiptStore } from "@/lib/store/receipt-store";
 import { useSettingsStore } from "@/lib/store/settings-store";
 import { useUiStore } from "@/lib/store/ui-store";
 import { formatAmount } from "@/lib/utils/currency";
 
-type Reminder = { id: string; icon: typeof Bell; tone: string; text: string; href?: string; action?: "quick-add" };
+type Reminder = { id: string; icon: typeof Bell; tone: string; text: string; href?: string; action?: "quick-add" | "backup" };
 
 const noop = () => () => {};
 /** Hour of day, read after hydration (never during prerender). */
@@ -31,6 +33,8 @@ export function RemindersBell() {
   const budgets = useSettingsStore((s) => s.budgets);
   const rules = useSettingsStore((s) => s.recurring);
   const setQuickAddOpen = useUiStore((s) => s.setQuickAddOpen);
+  const signedIn = useAuthStore((s) => s.status === "signed-in");
+  const lastBackupAt = usePrefsStore((s) => s.lastBackupAt);
   const hour = useHour();
   const { triggerProps, popoverProps, close } = useAnchoredPopover({ align: "end", width: 320 });
 
@@ -111,12 +115,18 @@ export function RemindersBell() {
       }
     }
 
+    // Guests' receipts live only in this browser: nudge a backup every 30 days.
+    const sinceBackup = lastBackupAt ? Math.floor((todayMs - Date.parse(lastBackupAt.slice(0, 10) + "T00:00:00Z")) / 86_400_000) : Infinity;
+    if (!signedIn && entries.length >= 10 && sinceBackup >= 30) {
+      list.push({ id: "backup", icon: DatabaseBackup, tone: "text-warning", text: t("remind.backup", { count: entries.length }), action: "backup" });
+    }
+
     const loggedToday = entries.some((e) => e.receiptDate.startsWith(today));
     if (hour >= 19 && !loggedToday) {
       list.push({ id: "log", icon: Zap, tone: "text-viz-accent", text: t("remind.logToday"), action: "quick-add" });
     }
     return list;
-  }, [hydrated, receipts, budgets, rules, hour, t]);
+  }, [hydrated, receipts, budgets, rules, hour, t, signedIn, lastBackupAt]);
 
   return (
     <>
@@ -129,7 +139,7 @@ export function RemindersBell() {
       >
         <Bell className="size-4" aria-hidden />
         {reminders.length > 0 && (
-          <span className="absolute top-1 right-1 flex min-w-3.5 items-center justify-center rounded-full bg-viz-accent px-1 text-[9px] leading-3.5 font-bold text-white">
+          <span className="absolute top-1 right-1 flex min-w-3.5 items-center justify-center rounded-full bg-viz-accent px-1 text-[9px] leading-3.5 font-bold text-neutral-950">
             {reminders.length}
           </span>
         )}
@@ -151,13 +161,14 @@ export function RemindersBell() {
               const cls = "flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-surface-muted";
               return (
                 <li key={r.id}>
-                  {r.action === "quick-add" ? (
+                  {r.action ? (
                     <button
                       type="button"
                       className={cls}
                       onClick={() => {
                         close();
-                        setQuickAddOpen(true);
+                        if (r.action === "backup") useUiStore.getState().setBackupOpen(true);
+                        else setQuickAddOpen(true);
                       }}
                     >
                       {body}

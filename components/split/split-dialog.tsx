@@ -20,7 +20,7 @@ import { formatAmount, lineTotal } from "@/lib/utils/currency";
 import { canShareFiles, downloadNodeAsPng, exportBasename, shareNodeAsImage } from "@/lib/utils/export-canvas";
 import { ME, type ReceiptDraft, type Split } from "@/lib/validators/receipt-schema";
 
-const AVATAR_COLORS = ["bg-[#eb6834]", "bg-[#2a78d6]", "bg-[#1baf7a]", "bg-[#6250d6]", "bg-[#d55181]", "bg-[#c98500]"];
+const AVATAR_COLORS = ["bg-[#c2410c]", "bg-[#1d4ed8]", "bg-[#047857]", "bg-[#6d28d9]", "bg-[#be185d]", "bg-[#a16207]"];
 
 function Avatar({ name, index }: { name: string; index: number }) {
   return (

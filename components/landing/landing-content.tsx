@@ -151,11 +151,19 @@ export function LandingContent() {
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>{t("landing.footer")}</p>
-          <p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Link href="/privacy" className="underline-offset-2 hover:text-foreground hover:underline">
+              {t("legal.privacy")}
+            </Link>
+            <Link href="/terms" className="underline-offset-2 hover:text-foreground hover:underline">
+              {t("legal.terms")}
+            </Link>
+            <span>
             {t("landing.contact")}{" "}
             <a href="mailto:ryannplan.app@gmail.com" className="underline underline-offset-2 hover:text-foreground">
               ryannplan.app@gmail.com
             </a>
+            </span>
           </p>
         </div>
       </footer>

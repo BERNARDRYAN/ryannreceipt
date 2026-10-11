@@ -11,8 +11,10 @@
     "test:watch": "vitest",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "test:e2e": "playwright test"
+    "cf:deploy": "opennextjs-cloudflare build && node scripts/check-worker-size.mjs && opennextjs-cloudflare deploy",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "cf:size": "node scripts/check-worker-size.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -31,6 +33,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@opennextjs/cloudflare": "^1.20.10",
     "@playwright/test": "^1.64.0",
     "@tailwindcss/turbopack": "^4",
@@ -42,7 +45,7 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^3.2.7",
+    "vitest": "^4.1.11",
     "wrangler": "^4.149.0"
   }
 }

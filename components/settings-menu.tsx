@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, HandCoins, Keyboard, LayoutTemplate, LockKeyhole, Monitor, Moon, Settings2, Sparkles, Sun } from "lucide-react";
+import { Check, DatabaseBackup, HandCoins, Keyboard, LayoutTemplate, LockKeyhole, Monitor, Moon, Settings2, Sparkles, Sun } from "lucide-react";
 
 import { menuItemClass, menuLabelClass, useAnchoredPopover } from "@/components/ui/use-anchored-popover";
 import { LOCALE_NAMES, LOCALES, useT } from "@/lib/i18n/messages";
@@ -88,6 +88,10 @@ export function SettingsMenu({ studio = false }: { studio?: boolean }) {
         <button type="button" className={menuItemClass} onClick={run(() => useUiStore.getState().setLockSettingsOpen(true))}>
           <LockKeyhole className="size-4" aria-hidden />
           {t("lock.settingsTitle")}
+        </button>
+        <button type="button" className={menuItemClass} onClick={run(() => useUiStore.getState().setBackupOpen(true))}>
+          <DatabaseBackup className="size-4" aria-hidden />
+          {t("backup.title")}
         </button>
         {studio && (
           <>

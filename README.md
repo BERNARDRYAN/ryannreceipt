@@ -20,17 +20,30 @@ They only create `receipt_*` objects and are safe to re-run.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Dev server |
-| `npm test` | Unit tests (Vitest): totals, rounding, mapping, history |
-| `npm run test:e2e` | Browser tests (Playwright, drives installed Edge) on :3100 |
+| `npm run typecheck` / `npm run lint` | TypeScript and ESLint |
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:e2e` | Browser tests incl. an axe accessibility scan (Playwright, installed Edge) on :3100 |
+| `npm run cf:build` / `npm run cf:size` | Build for Cloudflare / check the Worker fits the free plan (3 MiB gzipped) |
 | `npm run cf:preview` | Build for Cloudflare and run locally in workerd |
-| `npm run cf:deploy` | Build and deploy to Cloudflare Workers |
+| `npm run cf:deploy` | Build, check size, deploy to Cloudflare Workers |
+
+GitHub Actions (`.github/workflows/ci.yml`) runs typecheck, lint, unit and e2e tests and the
+bundle-size check on every push to `main` and on pull requests.
 
 ## Deploying to Cloudflare
 
-1. `npx wrangler login`
-2. Build-time public vars come from `.env.local` (they are inlined into the bundle).
-3. `npm run cf:deploy` → `https://ryannreceipt.<subdomain>.workers.dev`
-4. Add that URL to the Google OAuth client's **Authorized JavaScript origins**.
+**From GitHub (recommended).** Cloudflare dashboard → Workers & Pages → Create → Import a repository:
+
+- Build command: `npx opennextjs-cloudflare build`
+- Deploy command: `npx opennextjs-cloudflare deploy`
+- Settings → Build → **Variables**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_SITE_URL` (they are inlined at build time; `.env.local`
+  is never committed).
+
+Every push to `main` then deploys. **From this machine:** `npx wrangler login`, then `npm run cf:deploy`
+(uses `.env.local`).
+
+After the first deploy, add the site URL to the Google OAuth client's **Authorized JavaScript origins**.
 
 Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 `RL_READ` in `wrangler.jsonc`) on top of an in-memory window.
@@ -63,6 +76,9 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **Import CSV**: bank / e-wallet statements, parsed on the device. Only money out is imported and
   re-importing the same file never duplicates.
 - **Year review**: a receipt-style summary of the year, shareable as an image.
+- **Backup & restore** (Settings): download everything as a JSON file and restore it on any device.
+  Signed-out users get a reminder every 30 days. The app-lock PIN is never included.
+- **Privacy & Terms**: `/privacy` and `/terms`, linked from the home page footer.
 
 ## Architecture
 

@@ -109,7 +109,7 @@ export function SpendingCalendar({
               title={value > 0 ? `${currency} ${formatAmount(value, currency)}` : undefined}
               className={`aspect-square rounded-md text-[11px] font-medium tabular-nums transition-transform hover:scale-110 disabled:opacity-30 disabled:hover:scale-100 ${
                 LEVELS[lv]
-              } ${lv >= 3 ? "text-white" : "text-foreground/80"} ${
+              } ${lv >= 3 ? "text-neutral-950" : "text-foreground/80"} ${
                 selected ? "ring-2 ring-foreground ring-offset-1 ring-offset-surface" : day === today ? "ring-1 ring-foreground/50" : ""
               }`}
             >

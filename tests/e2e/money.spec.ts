@@ -94,3 +94,39 @@ test("share links need an account", async ({ page }) => {
   await page.getByRole("button", { name: "Share link", exact: true }).click();
   await expect(page.getByText(/Sign in to create share links/)).toBeVisible();
 });
+
+test("back up and restore receipts", async ({ page }) => {
+  await page.goto("/history");
+  await quickAdd(page, "roti canai 3.50 cash");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Backup & restore" }).click();
+  const dialog = page.getByRole("dialog", { name: "Backup & restore" });
+  const downloading = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Download backup" }).click();
+  const file = await (await downloading).path();
+  await expect(dialog.getByText(/^Last backup: /)).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  // Lose the receipt, then bring it back from the file.
+  await page.getByRole("button", { name: /^Actions for Roti Canai/ }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByRole("link", { name: /Roti Canai/ })).toHaveCount(0);
+  // Wait out the undo window so it's really gone from storage.
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("ryannreceipt:draft")?.includes("Roti Canai")), { timeout: 10_000 })
+    .toBe(false);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Backup & restore" }).click();
+  await dialog.getByLabel("Restore from file").setInputFiles(file);
+  await expect(page.getByText(/^Restored: 1 added/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Roti Canai/ })).toHaveCount(1);
+});
+
+test("privacy and terms are linked from the home page", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Privacy" }).click();
+  await expect(page.getByRole("heading", { name: "Privacy Policy" })).toBeVisible();
+  await page.getByRole("link", { name: "Terms" }).first().click();
+  await expect(page.getByRole("heading", { name: "Terms of Use" })).toBeVisible();
+});

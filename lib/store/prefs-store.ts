@@ -39,6 +39,9 @@ type PrefsStore = {
   lastSerial: number;
   lock: LockPrefs;
   setLock: (lock: LockPrefs) => void;
+  /** When this device last downloaded a backup ("" = never). */
+  lastBackupAt: string;
+  setLastBackupAt: (iso: string) => void;
 
   setLocale: (locale: Locale) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -71,6 +74,8 @@ export const usePrefsStore = create<PrefsStore>()(
       lastSerial: 0,
       lock: LOCK_OFF,
       setLock: (lock) => set({ lock }),
+      lastBackupAt: "",
+      setLastBackupAt: (lastBackupAt) => set({ lastBackupAt }),
 
       setLocale: (locale) => set({ locale }),
       setTheme: (theme) => set({ theme }),
@@ -95,7 +100,7 @@ export const usePrefsStore = create<PrefsStore>()(
       name: PREFS_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock }) => ({
+      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock, lastBackupAt }) => ({
         locale,
         theme,
         guideDone,
@@ -104,6 +109,7 @@ export const usePrefsStore = create<PrefsStore>()(
         budgets,
         lastSerial,
         lock,
+        lastBackupAt,
       }),
       // First visit: nothing stored yet, so adopt the browser language.
       merge: (persisted, current) =>
