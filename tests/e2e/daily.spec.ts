@@ -1,13 +1,13 @@
 import path from "node:path";
 
-import { expect, goStep, paper, test } from "./fixtures";
+import { addButton, expect, goStep, openMore, paper, test } from "./fixtures";
 
 test("Quick add logs an expense from one line", async ({ page }) => {
   await page.goto("/history");
   await page.getByRole("button", { name: "Quick add" }).first().click();
   await page.getByLabel("Expense", { exact: true }).fill("nasi lemak 12.90 tng #work");
   await expect(page.getByRole("radio", { name: "Food & Drink" })).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("button", { name: "Add expense" }).click();
+  await addButton(page).click();
   await expect(page.getByText(/Added MYR 12\.90 · Food & Drink/)).toBeVisible();
 
   const row = page.getByRole("link", { name: /Nasi Lemak/ }).first();
@@ -25,7 +25,7 @@ test("shop names auto-fill from earlier receipts", async ({ page }) => {
   await page.goto("/history");
   await page.getByRole("button", { name: "Quick add" }).first().click();
   await page.getByLabel("Expense", { exact: true }).fill("jaya grocer 88.00 maybank");
-  await page.getByRole("button", { name: "Add expense" }).click();
+  await addButton(page).click();
 
   await page.goto("/studio");
   await page.getByRole("button", { name: "New receipt" }).click();
@@ -41,6 +41,7 @@ test("shop names auto-fill from earlier receipts", async ({ page }) => {
 test("wallet, tags and tax relief are recorded and summarised", async ({ page }) => {
   await page.goto("/studio");
   await goStep(page, "Payment");
+  await openMore(page, "Wallet, warranty, tags & photo");
   await page.getByLabel("Wallet / account").fill("CIMB");
   await page.getByLabel("Tags").fill("family");
   await page.getByLabel("Tags").press("Enter");
@@ -102,6 +103,7 @@ test("the reminders bell lists what needs attention", async ({ page }) => {
   await page.goto("/studio");
   await goStep(page, "Payment");
   const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+  await openMore(page, "Wallet, warranty, tags & photo");
   await page.getByLabel("Warranty until").fill(soon);
   await page.getByRole("button", { name: /^Reminders \(\d+\)/ }).click();
   await expect(page.getByText(/warranty ends in \d+ day/)).toBeVisible();

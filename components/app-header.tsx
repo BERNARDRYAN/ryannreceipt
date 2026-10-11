@@ -1,6 +1,6 @@
 "use client";
 
-import { History, PenLine, Zap } from "lucide-react";
+import { Home, PenLine, Zap } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -14,8 +14,8 @@ import { useT } from "@/lib/i18n/messages";
 import { useUiStore } from "@/lib/store/ui-store";
 
 const NAV = [
+  { href: "/history", label: "nav.history", icon: Home, key: "history" },
   { href: "/studio", label: "nav.studio", icon: PenLine, key: "studio" },
-  { href: "/history", label: "nav.history", icon: History, key: "history" },
 ] as const;
 
 /** `tabBar`: the page shows the phone tab bar, so nav and Quick add move there on small screens. */
@@ -25,7 +25,7 @@ export function AppHeader({ section, actions, tabBar = false }: { section: "stud
   return (
     <header className="relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur sm:px-4">
       <div className="flex min-w-0 items-center gap-1 sm:gap-3">
-        <Link href="/" aria-label={t("nav.home")} className="flex shrink-0 items-center gap-2 rounded-md p-1">
+        <Link href="/history" aria-label={t("nav.home")} className="flex shrink-0 items-center gap-2 rounded-md p-1">
           <BrandMark className="size-6" />
           <span className="hidden font-mono text-sm font-bold tracking-tight md:inline">RyannReceipt</span>
         </Link>

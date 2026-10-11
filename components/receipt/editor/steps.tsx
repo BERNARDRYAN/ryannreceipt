@@ -74,43 +74,16 @@ export function ShopStep() {
         <Field label={t("field.storeName")} fieldId="merchantName" hint={t("memory.hint")}>
           {() => <MerchantInput value={draft.merchantName} onChange={(v) => setField("merchantName", v)} />}
         </Field>
-        <Field label={t("field.address")} fieldId="merchantAddress">
-          {(id) => (
-            <textarea
-              id={id}
-              rows={2}
-              className={`${inputClass} resize-none`}
-              maxLength={160}
-              value={draft.merchantAddress}
-              onChange={(e) => setField("merchantAddress", e.target.value)}
-            />
-          )}
-        </Field>
-        <Field label={t("field.phone")} fieldId="merchantPhone">
-          {(id) => (
-            <input
-              id={id}
-              type="tel"
-              className={inputClass}
-              maxLength={32}
-              value={draft.merchantPhone}
-              onChange={(e) => setField("merchantPhone", e.target.value)}
-            />
-          )}
-        </Field>
-        <LogoField value={draft.styleConfig.logo} onChange={(logo) => setStyle("logo", logo)} />
-      </Group>
-
-      <Group title={t("section.receiptDetails")}>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={t("field.receiptNo")} fieldId="receiptNo">
+        {/* Only what every receipt needs; the rest waits under "More options". */}
+        <div className="grid grid-cols-[1fr_7rem] gap-3">
+          <Field label={t("field.date")} fieldId="receiptDate">
             {(id) => (
               <input
                 id={id}
+                type="datetime-local"
                 className={inputClass}
-                maxLength={32}
-                value={draft.receiptNo}
-                onChange={(e) => setField("receiptNo", e.target.value)}
+                value={draft.receiptDate}
+                onChange={(e) => e.target.value && setField("receiptDate", e.target.value)}
               />
             )}
           </Field>
@@ -128,32 +101,57 @@ export function ShopStep() {
               </select>
             )}
           </Field>
-          <Field label={t("field.date")} className="col-span-2" fieldId="receiptDate">
-            {(id) => (
-              <input
-                id={id}
-                type="datetime-local"
-                className={inputClass}
-                value={draft.receiptDate}
-                onChange={(e) => e.target.value && setField("receiptDate", e.target.value)}
-              />
-            )}
-          </Field>
-          <Field label={t("field.header")} className="col-span-2" fieldId="title">
-            {(id) => (
-              <input
-                id={id}
-                className={inputClass}
-                maxLength={80}
-                placeholder={t("field.headerPh")}
-                value={draft.title}
-                onChange={(e) => setField("title", e.target.value)}
-              />
-            )}
-          </Field>
         </div>
-        <MoreOptions title={t("editor.optionalDetails")}>
+        <MoreOptions title={t("editor.shopMore")}>
+          <Field label={t("field.address")} fieldId="merchantAddress">
+            {(id) => (
+              <textarea
+                id={id}
+                rows={2}
+                className={`${inputClass} resize-none`}
+                maxLength={160}
+                value={draft.merchantAddress}
+                onChange={(e) => setField("merchantAddress", e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label={t("field.phone")} fieldId="merchantPhone">
+            {(id) => (
+              <input
+                id={id}
+                type="tel"
+                className={inputClass}
+                maxLength={32}
+                value={draft.merchantPhone}
+                onChange={(e) => setField("merchantPhone", e.target.value)}
+              />
+            )}
+          </Field>
+          <LogoField value={draft.styleConfig.logo} onChange={(logo) => setStyle("logo", logo)} />
           <div className="grid grid-cols-2 gap-3">
+            <Field label={t("field.receiptNo")} fieldId="receiptNo">
+              {(id) => (
+                <input
+                  id={id}
+                  className={inputClass}
+                  maxLength={32}
+                  value={draft.receiptNo}
+                  onChange={(e) => setField("receiptNo", e.target.value)}
+                />
+              )}
+            </Field>
+            <Field label={t("field.header")} fieldId="title">
+              {(id) => (
+                <input
+                  id={id}
+                  className={inputClass}
+                  maxLength={80}
+                  placeholder={t("field.headerPh")}
+                  value={draft.title}
+                  onChange={(e) => setField("title", e.target.value)}
+                />
+              )}
+            </Field>
             <Field label={t("field.cashier")} fieldId="cashier">
               {(id) => (
                 <input
@@ -242,33 +240,40 @@ export function PaymentStep() {
   return (
     <div className="space-y-6">
       <Group title={t("section.payment")}>
-        <Field label={t("field.paymentMethod")} fieldId="paymentMethod">
-          {(id) => (
-            <select
-              id={id}
-              className={inputClass}
-              value={draft.paymentMethod}
-              onChange={(e) => setField("paymentMethod", e.target.value as (typeof PAYMENT_METHODS)[number])}
-            >
-              {PAYMENT_METHODS.map((p) => (
-                <option key={p}>{p}</option>
-              ))}
-            </select>
-          )}
-        </Field>
-        <Field label={t("field.wallet")} hint={t("hint.wallet")} fieldId="wallet">
-          {(id) => (
-            <Combobox
-              id={id}
-              className={inputClass}
-              maxLength={30}
-              placeholder={t("field.walletPh")}
-              value={draft.wallet}
-              onChange={(v) => setField("wallet", v)}
-              options={used.wallets.map((w) => ({ value: w }))}
-            />
-          )}
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t("field.paymentMethod")} fieldId="paymentMethod">
+            {(id) => (
+              <select
+                id={id}
+                className={inputClass}
+                value={draft.paymentMethod}
+                onChange={(e) => setField("paymentMethod", e.target.value as (typeof PAYMENT_METHODS)[number])}
+              >
+                {PAYMENT_METHODS.map((p) => (
+                  <option key={p} value={p}>
+                    {t(`pm.${p}` as MessageKey)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+          <Field label={t("field.category")} fieldId="category">
+            {(id) => (
+              <select
+                id={id}
+                className={inputClass}
+                value={draft.category}
+                onChange={(e) => setField("category", e.target.value as (typeof CATEGORIES)[number])}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {t(`cat.${c}` as MessageKey)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        </div>
         {isCash && (
           <>
             <Field label={t("field.tendered", { currency: draft.currency })} fieldId="amountTendered">
@@ -307,7 +312,38 @@ export function PaymentStep() {
         )}
       </Group>
 
-      <Group title={t("section.charges")}>
+      <dl className="space-y-1 rounded-xl bg-surface-muted px-4 py-3 text-sm tabular-nums">
+        <SummaryRow label={t("summary.subtotal")} value={money(totals.subtotal)} />
+        {totals.discount > 0 && <SummaryRow label={t("summary.discount")} value={`-${money(totals.discount)}`} />}
+        {totals.serviceCharge > 0 && <SummaryRow label={t("summary.service")} value={money(totals.serviceCharge)} />}
+        {totals.taxAmount > 0 && (
+          <SummaryRow
+            label={draft.taxInclusive ? t("summary.taxIncluded", { label: draft.taxLabel }) : draft.taxLabel}
+            value={money(totals.taxAmount)}
+          />
+        )}
+        {totals.rounding !== 0 && <SummaryRow label={t("summary.rounding")} value={money(totals.rounding)} />}
+        <div className="my-1 border-t border-border" />
+        <SummaryRow label={t("summary.total")} value={money(totals.payable)} strong />
+        {isCash && totals.tendered > 0 && (
+          <>
+            <SummaryRow label={t("summary.tendered")} value={money(totals.tendered)} />
+            <SummaryRow
+              label={totals.tendered < totals.payable ? t("summary.short") : t("summary.change")}
+              value={money(totals.tendered < totals.payable ? totals.payable - totals.tendered : totals.change)}
+              strong
+            />
+          </>
+        )}
+      </dl>
+
+      <SplitButton />
+
+      {/* Opens by itself when the receipt already has any of these. */}
+      <MoreOptions
+        title={t("editor.chargesMore")}
+        defaultOpen={draft.discountAmount > 0 || draft.serviceChargeRate > 0 || draft.taxRate > 0}
+      >
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.discount", { currency: draft.currency })} fieldId="discountAmount">
             {(id) => (
@@ -356,54 +392,27 @@ export function PaymentStep() {
           checked={draft.taxInclusive}
           onChange={(v) => setField("taxInclusive", v)}
         />
-      </Group>
+      </MoreOptions>
 
-      <dl className="space-y-1 rounded-xl bg-surface-muted px-4 py-3 text-sm tabular-nums">
-        <SummaryRow label={t("summary.subtotal")} value={money(totals.subtotal)} />
-        {totals.discount > 0 && <SummaryRow label={t("summary.discount")} value={`-${money(totals.discount)}`} />}
-        {totals.serviceCharge > 0 && <SummaryRow label={t("summary.service")} value={money(totals.serviceCharge)} />}
-        {totals.taxAmount > 0 && (
-          <SummaryRow
-            label={draft.taxInclusive ? t("summary.taxIncluded", { label: draft.taxLabel }) : draft.taxLabel}
-            value={money(totals.taxAmount)}
-          />
-        )}
-        {totals.rounding !== 0 && <SummaryRow label={t("summary.rounding")} value={money(totals.rounding)} />}
-        <div className="my-1 border-t border-border" />
-        <SummaryRow label={t("summary.total")} value={money(totals.payable)} strong />
-        {isCash && totals.tendered > 0 && (
-          <>
-            <SummaryRow label={t("summary.tendered")} value={money(totals.tendered)} />
-            <SummaryRow
-              label={totals.tendered < totals.payable ? t("summary.short") : t("summary.change")}
-              value={money(totals.tendered < totals.payable ? totals.payable - totals.tendered : totals.change)}
-              strong
-            />
-          </>
-        )}
-      </dl>
-
-      <SplitButton />
-
-      <Group title={t("section.records")}>
+      <MoreOptions
+        title={t("editor.recordsMore")}
+        defaultOpen={!!(draft.wallet || draft.warrantyUntil || draft.tags.length || draft.taxRelief || draft.hasPhoto)}
+      >
         <div className="grid grid-cols-2 gap-3">
-          <Field label={t("field.category")} hint={t("hint.category")} fieldId="category">
+          <Field label={t("field.wallet")} hint={t("hint.wallet")} className="col-span-2" fieldId="wallet">
             {(id) => (
-              <select
+              <Combobox
                 id={id}
                 className={inputClass}
-                value={draft.category}
-                onChange={(e) => setField("category", e.target.value as (typeof CATEGORIES)[number])}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {t(`cat.${c}` as MessageKey)}
-                  </option>
-                ))}
-              </select>
+                maxLength={30}
+                placeholder={t("field.walletPh")}
+                value={draft.wallet}
+                onChange={(v) => setField("wallet", v)}
+                options={used.wallets.map((w) => ({ value: w }))}
+              />
             )}
           </Field>
-          <Field label={t("field.warranty")} hint={t("hint.warranty")} fieldId="warrantyUntil">
+          <Field label={t("field.warranty")} hint={t("hint.warranty")} className="col-span-2" fieldId="warrantyUntil">
             {(id) => (
               <input
                 id={id}
@@ -440,7 +449,7 @@ export function PaymentStep() {
           <span className="block text-xs font-medium text-muted">{t("photo.label")}</span>
           <PhotoField receiptId={activeId} hasPhoto={draft.hasPhoto} onChange={(has) => setField("hasPhoto", has)} />
         </div>
-      </Group>
+      </MoreOptions>
     </div>
   );
 }

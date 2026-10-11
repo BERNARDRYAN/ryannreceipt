@@ -50,6 +50,14 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 
 ## Using it
 
+- **Home** (`/history`, where the installed app opens): this month, today, a big **Add an expense**,
+  then your expenses grouped by day. Charts, calendar and breakdowns sit under **Insights**
+  (folded on phones). Returning visitors skip the landing page.
+- **Add expense** (Alt+Q, or the **+** on phones): amount first, then what it was for (it still
+  understands a whole note like `nasi lemak 12.90 tng yesterday #work`), categories you use most
+  first, and payment / wallet / date under "Paid with".
+- **Receipt maker** (`/studio`): each step shows only the essentials; everything else is under
+  "More options". Any expense opens here to become a printed-style receipt.
 - **Templates**: first visit opens a gallery (Kopitiam, Grocery, Electronics, Ride, Hawker, Blank); later via **New ▾**.
 - **Four steps**: Shop → Items → Payment → Look. Click any line on the paper to jump to its field.
 - **Looks**: one-click paper/typeface/grain combinations; finer control under *More options*.

@@ -11,19 +11,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { SampleReceipt } from "@/components/landing/sample-receipt";
 import { SettingsMenu } from "@/components/settings-menu";
 import { useT, type MessageKey } from "@/lib/i18n/messages";
 
+// Tracking first; the receipt maker is the bonus.
 const FEATURES: { icon: LucideIcon; title: MessageKey; body: MessageKey }[] = [
-  { icon: Printer, title: "landing.f1Title", body: "landing.f1Body" },
-  { icon: Calculator, title: "landing.f2Title", body: "landing.f2Body" },
-  { icon: FileDown, title: "landing.f3Title", body: "landing.f3Body" },
   { icon: History, title: "landing.f4Title", body: "landing.f4Body" },
   { icon: ShieldCheck, title: "landing.f5Title", body: "landing.f5Body" },
   { icon: CloudCog, title: "landing.f6Title", body: "landing.f6Body" },
+  { icon: Printer, title: "landing.f1Title", body: "landing.f1Body" },
+  { icon: Calculator, title: "landing.f2Title", body: "landing.f2Body" },
+  { icon: FileDown, title: "landing.f3Title", body: "landing.f3Body" },
 ];
 
 const STEPS: { title: MessageKey; body: MessageKey }[] = [
@@ -34,6 +37,17 @@ const STEPS: { title: MessageKey; body: MessageKey }[] = [
 
 export function LandingContent() {
   const t = useT();
+  const router = useRouter();
+
+  // Returning users came to track spending: take them straight home.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("ryannreceipt:home") === "1") router.replace("/history");
+    } catch {
+      // Storage blocked: stay on the landing page.
+    }
+  }, [router]);
+
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
@@ -42,12 +56,12 @@ export function LandingContent() {
           <span className="font-mono text-sm font-bold tracking-tight">RyannReceipt</span>
         </Link>
         <nav aria-label={t("nav.main")} className="flex items-center gap-1 text-sm">
-          <Link href="/history" className="hidden rounded-lg px-3 py-1.5 text-muted hover:text-foreground sm:inline">
-            {t("nav.history")}
+          <Link href="/studio" className="hidden rounded-lg px-3 py-1.5 text-muted hover:text-foreground sm:inline">
+            {t("nav.studio")}
           </Link>
           <SettingsMenu />
           <Link
-            href="/studio"
+            href="/history"
             className="ml-1 rounded-lg bg-accent px-3.5 py-1.5 font-medium text-accent-contrast shadow-sm hover:opacity-90"
           >
             {t("landing.openStudio")}
@@ -70,14 +84,14 @@ export function LandingContent() {
             <p className="max-w-lg text-lg leading-relaxed text-pretty text-muted">{t("landing.sub")}</p>
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/studio"
+                href="/history"
                 className="group inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-medium text-accent-contrast shadow-lg shadow-black/10 transition-transform hover:-translate-y-0.5"
               >
                 {t("landing.cta")}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
               </Link>
               <Link
-                href="/history"
+                href="/studio"
                 className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-medium ring-1 ring-border hover:bg-surface"
               >
                 {t("landing.viewHistory")}
@@ -138,7 +152,7 @@ export function LandingContent() {
               <p className="mt-1 text-sm opacity-75">{t("landing.ctaBody")}</p>
             </div>
             <Link
-              href="/studio"
+              href="/history"
               className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-accent-contrast px-5 py-3 text-sm font-medium text-accent hover:opacity-90"
             >
               {t("history.openStudio")}

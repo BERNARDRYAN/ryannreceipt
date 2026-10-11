@@ -1,9 +1,9 @@
-import { expect, test } from "./fixtures";
+import { addButton, expect, test } from "./fixtures";
 
 async function quickAdd(page: import("@playwright/test").Page, line: string) {
   await page.getByRole("button", { name: "Quick add" }).first().click();
   await page.getByLabel("Expense", { exact: true }).fill(line);
-  await page.getByRole("button", { name: "Add expense" }).click();
+  await addButton(page).click();
   await expect(page.getByText(/^Added /).last()).toBeVisible();
 }
 
@@ -84,7 +84,7 @@ test("app lock asks for the PIN after a reload", async ({ page }) => {
   await expect(lock.getByText("Wrong PIN. Try again.")).toBeVisible();
   for (const d of "2580") await lock.getByRole("button", { name: d, exact: true }).click();
   await expect(lock).toBeHidden();
-  await expect(tab.getByRole("heading", { name: "History" })).toBeVisible();
+  await expect(tab.getByRole("heading", { name: "Spending" })).toBeVisible();
 });
 
 test("share links need an account", async ({ page }) => {
@@ -135,11 +135,11 @@ test("@mobile phone tab bar adds spending from the + sheet", async ({ page }) =>
   await page.goto("/history");
   await page.waitForLoadState("networkidle");
   const tabs = page.getByRole("navigation", { name: "Main" });
-  await expect(tabs.getByRole("link", { name: "History" })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+  // One tap: the + opens Add expense directly.
   await tabs.getByRole("button", { name: "Add spending" }).click();
-  await page.getByRole("dialog", { name: "Add spending" }).getByRole("button", { name: /^Quick add/ }).click();
   await page.getByLabel("Expense", { exact: true }).fill("teh tarik 3.20 cash");
-  await page.getByRole("button", { name: "Add expense" }).click();
+  await addButton(page).click();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Teh Tarik/ })).toBeVisible();
 });

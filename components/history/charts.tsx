@@ -51,7 +51,9 @@ export function StatTile({
   delta,
   meter,
   action,
+  className = "",
 }: {
+  className?: string;
   label: string;
   value: ReactNode;
   sub?: ReactNode;
@@ -64,7 +66,7 @@ export function StatTile({
   const up = delta && delta.value > 0;
   const good = delta && (delta.upIsGood ? up : !up);
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4">
+    <div className={`rounded-2xl border border-border bg-surface p-4 ${className}`}>
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-medium text-muted">{label}</p>
         {action}

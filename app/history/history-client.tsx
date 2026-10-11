@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Flame, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
+import { Camera, ChevronDown, Flame, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -53,6 +53,7 @@ import { formatAmount } from "@/lib/utils/currency";
 import { CURRENCIES, type Currency } from "@/lib/validators/receipt-schema";
 
 const UNDO_MS = 5000;
+export const HOME_KEY = "ryannreceipt:home";
 const EMPTY_FILTERS: ListFilters = { query: "", category: "", month: "", day: "", wallet: "", tag: "" };
 // Module-level so a pending delete still completes if the user navigates away.
 const pendingTimers = new Map<string, number>();
@@ -103,8 +104,23 @@ export function HistoryClient() {
   const recurringRules = useSettingsStore((s) => s.recurring);
   // Empty tools live folded in "More tools" until opened (or until they have data).
   const [openedTools, setOpenedTools] = useState<Set<string>>(() => new Set());
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const openScan = useUiStore((s) => s.openScan);
   const uploading = useSyncState((s) => s.saving);
+
+  // Home is the app's front door: remember it (the landing page then skips
+  // straight here), and open Add expense for the "?add=1" app shortcut.
+  useEffect(() => {
+    try {
+      localStorage.setItem(HOME_KEY, "1");
+    } catch {
+      // Private mode: the landing page simply shows as usual.
+    }
+    if (new URLSearchParams(window.location.search).get("add") === "1") {
+      useUiStore.getState().setQuickAddOpen(true);
+      window.history.replaceState(null, "", "/history");
+    }
+  }, []);
 
   // Load (and after every upload, refresh) the cloud list so new receipts
   // from Quick Add, scans or recurring rules don't drop out once synced.
@@ -393,6 +409,46 @@ export function HistoryClient() {
 
   // ---- render ------------------------------------------------------------
 
+  // Shared between the desktop header and the phone Insights section.
+  const currencyPicker = (
+    <label className="flex items-center gap-1.5 text-sm max-sm:grow max-sm:basis-[calc(50%-0.25rem)]" title={t("fx.showIn")}>
+      <span className="sr-only">{t("fx.showIn")}</span>
+      <Globe className="size-4 text-muted" aria-hidden />
+      <select
+        value={currency}
+        onChange={(e) => setHomeCurrency(e.target.value as Currency)}
+        className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm max-sm:h-10 max-sm:min-w-0 max-sm:flex-1"
+      >
+        {CURRENCIES.map((c) => (
+          <option key={c}>{c}</option>
+        ))}
+      </select>
+    </label>
+  );
+  const reportButton = entries && entries.length > 0 && (
+    <button
+      type="button"
+      onClick={() => void downloadReport()}
+      disabled={reporting}
+      title={t("report.monthly", { month: ml(selectedMonth, true) })}
+      className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}
+    >
+      {reporting ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
+      {t("report.button")}
+    </button>
+  );
+  const reviewButton = entries && entries.length > 0 && (
+    <button
+      type="button"
+      onClick={() => useUiStore.getState().setReviewYear(today.slice(0, 4))}
+      title={t("review.title")}
+      className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}
+    >
+      <Sparkles className="size-4" aria-hidden />
+      {t("review.button")}
+    </button>
+  );
+
   return (
     <div className="flex min-h-dvh flex-col">
       <AppHeader section="history" tabBar />
@@ -421,19 +477,12 @@ export function HistoryClient() {
           </div>
           {/* Phones: an even two-column grid (odd last item fills the row). */}
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-            <label className="flex items-center gap-1.5 text-sm max-sm:grow max-sm:basis-[calc(50%-0.25rem)]" title={t("fx.showIn")}>
-              <span className="sr-only">{t("fx.showIn")}</span>
-              <Globe className="size-4 text-muted" aria-hidden />
-              <select
-                value={currency}
-                onChange={(e) => setHomeCurrency(e.target.value as Currency)}
-                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm max-sm:h-10 max-sm:min-w-0 max-sm:flex-1"
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </label>
+            {/* Currency, report and year review live under Insights on phones. */}
+            <div className="contents max-sm:hidden">
+              {currencyPicker}
+              {reportButton}
+              {reviewButton}
+            </div>
             {signedIn && pendingSync > 0 && (
               <button type="button" onClick={handleSync} disabled={syncing} className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}>
                 {syncing ? (
@@ -448,29 +497,6 @@ export function HistoryClient() {
               <Camera className="size-4" aria-hidden />
               {t("scan.title")}
             </button>
-            {entries && entries.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void downloadReport()}
-                disabled={reporting}
-                title={t("report.monthly", { month: ml(selectedMonth, true) })}
-                className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}
-              >
-                {reporting ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
-                {t("report.button")}
-              </button>
-            )}
-            {entries && entries.length > 0 && (
-              <button
-                type="button"
-                onClick={() => useUiStore.getState().setReviewYear(today.slice(0, 4))}
-                title={t("review.title")}
-                className={`${buttonStyles.secondary} max-sm:h-10 max-sm:grow max-sm:basis-[calc(50%-0.25rem)] whitespace-nowrap`}
-              >
-                <Sparkles className="size-4" aria-hidden />
-                {t("review.button")}
-              </button>
-            )}
             <Link href="/studio" className={`${buttonStyles.primary} max-sm:hidden`}>
               <Plus className="size-4" aria-hidden />
               {t("studio.newReceipt")}
@@ -505,8 +531,9 @@ export function HistoryClient() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 [&>:first-child]:col-span-2 sm:[&>:first-child]:col-span-1">
+            <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${activeWarranties > 0 ? "sm:grid-cols-3" : ""}`}>
               <StatTile
+                className="col-span-2 sm:col-span-1"
                 label={t("tile.spentIn", { month: ml(selectedMonth, true) })}
                 value={`${currency} ${formatAmount(selTotal, currency)}`}
                 delta={
@@ -537,52 +564,41 @@ export function HistoryClient() {
                 }
               />
               <StatTile
+                className={activeWarranties > 0 ? "" : "col-span-2 sm:col-span-1"}
                 label={t("tile.today")}
                 value={`${currency} ${formatAmount(todayTotal, currency)}`}
                 sub={t("tile.todayCount", { count: todayCount, total: entries.length })}
               />
-              <StatTile
-                label={t("tile.warranties")}
-                value={activeWarranties}
-                sub={
-                  soon > 0 ? (
-                    <span className="font-medium text-warning">{t("tile.expiringSoon", { count: soon })}</span>
-                  ) : (
-                    t("tile.noneExpiring")
-                  )
-                }
-              />
+              {activeWarranties > 0 && (
+                <StatTile
+                  label={t("tile.warranties")}
+                  value={activeWarranties}
+                  sub={
+                    soon > 0 ? (
+                      <span className="font-medium text-warning">{t("tile.expiringSoon", { count: soon })}</span>
+                    ) : (
+                      t("tile.noneExpiring")
+                    )
+                  }
+                />
+              )}
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-              <MonthlyChart data={monthData} currency={currency} selected={selectedMonth} onSelect={selectMonth} />
-              <SpendingCalendar
-                month={selectedMonth}
-                today={today}
-                totals={dayTotals}
-                currency={currency}
-                selectedDay={filters.day}
-                onSelectDay={(day) => setFilters((f) => ({ ...f, day, month: "" }))}
-              />
-            </div>
-
-            <Breakdown
-              monthName={ml(selectedMonth, true)}
-              currency={currency}
-              byCategory={byCategory}
-              byWallet={byWallet}
-              byTag={byTag}
-              active={activeBreakdown}
-              onSelect={(mode, key) =>
-                setFilters((f) => ({
-                  ...f,
-                  category: mode === "category" ? key : "",
-                  wallet: mode === "wallet" ? key : "",
-                  tag: mode === "tag" ? key : "",
-                }))
-              }
-              onEditBudgets={() => setBudgetOpen(true)}
-            />
+            {/* The main action, always one tap away. */}
+            <button
+              type="button"
+              onClick={() => useUiStore.getState().setQuickAddOpen(true)}
+              className="group flex w-full items-center gap-3 rounded-2xl bg-surface px-4 py-3.5 text-left shadow-sm ring-1 ring-border transition-shadow hover:shadow-md"
+            >
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-contrast transition-transform group-hover:scale-105">
+                <Plus className="size-5" strokeWidth={2.5} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{t("home.addTitle")}</span>
+                <span className="block truncate text-xs text-muted">{t("home.addHint")}</span>
+              </span>
+              <kbd className="hidden rounded-md px-1.5 py-0.5 font-mono text-[11px] text-muted ring-1 ring-border sm:inline">Alt+Q</kbd>
+            </button>
 
             <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
               <ReceiptList
@@ -607,6 +623,61 @@ export function HistoryClient() {
                 <MoreTools tools={foldedTools} />
               </div>
             </div>
+
+            {/* Charts and breakdowns: below your expenses, folded on phones. */}
+            <section aria-labelledby="insights-heading" className="space-y-4 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="insights-heading" className="font-display text-3xl tracking-tight">
+                  {t("home.insights")}
+                </h2>
+                <button
+                  type="button"
+                  aria-expanded={insightsOpen}
+                  aria-controls="insights-body"
+                  onClick={() => setInsightsOpen((o) => !o)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-sm font-medium ring-1 ring-border sm:hidden"
+                >
+                  {insightsOpen ? t("home.hideInsights") : t("home.showInsights")}
+                  <ChevronDown className={`size-4 transition-transform ${insightsOpen ? "rotate-180" : ""}`} aria-hidden />
+                </button>
+              </div>
+              <div id="insights-body" className={`space-y-4 ${insightsOpen ? "" : "max-sm:hidden"}`}>
+                <div className="flex flex-wrap items-center gap-2 sm:hidden">
+                  {currencyPicker}
+                  {reportButton}
+                  {reviewButton}
+                </div>
+              <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+                <MonthlyChart data={monthData} currency={currency} selected={selectedMonth} onSelect={selectMonth} />
+                <SpendingCalendar
+                  month={selectedMonth}
+                  today={today}
+                  totals={dayTotals}
+                  currency={currency}
+                  selectedDay={filters.day}
+                  onSelectDay={(day) => setFilters((f) => ({ ...f, day, month: "" }))}
+                />
+              </div>
+
+              <Breakdown
+                monthName={ml(selectedMonth, true)}
+                currency={currency}
+                byCategory={byCategory}
+                byWallet={byWallet}
+                byTag={byTag}
+                active={activeBreakdown}
+                onSelect={(mode, key) =>
+                  setFilters((f) => ({
+                    ...f,
+                    category: mode === "category" ? key : "",
+                    wallet: mode === "wallet" ? key : "",
+                    tag: mode === "tag" ? key : "",
+                  }))
+                }
+                onEditBudgets={() => setBudgetOpen(true)}
+              />
+              </div>
+            </section>
           </>
         )}
       </main>

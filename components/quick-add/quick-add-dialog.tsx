@@ -1,11 +1,11 @@
 "use client";
 
-import { Camera, CornerDownLeft, Zap } from "lucide-react";
+import { Camera, ChevronDown, FileUp, PenLine } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { CATEGORY_ICONS } from "@/components/quick-add/category-icons";
-import { inputClass, NumberInput } from "@/components/receipt/editor/fields";
+import { inputClass } from "@/components/receipt/editor/fields";
 import { Combobox } from "@/components/ui/combobox";
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
 import { todayKey } from "@/lib/history/entries";
@@ -47,20 +47,30 @@ function nowTime() {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** "12.9" / "12,90" / "RM12.90" → 12.9; anything else → 0. */
+function parseAmountText(text: string) {
+  const n = Number(text.replace(/[^\d.,]/g, "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+}
+
 /**
- * Log an expense in one line ("nasi lemak 12.90 tng yesterday #work").
- * Everything is parsed live, filled from the shop's history, and editable.
+ * Amount first, then what it was for. The "what" box still understands a
+ * whole note ("nasi lemak 12.90 tng yesterday #work"), shops are remembered,
+ * and payment / wallet / date wait under "More" with sensible defaults.
  */
 function QuickAddForm({ onDone }: { onDone: () => void }) {
   const t = useT();
   const router = useRouter();
   const receipts = useReceiptStore((s) => s.receipts);
   const addReceipts = useReceiptStore((s) => s.addReceipts);
-  const openScan = useUiStore((s) => s.openScan);
+  const ui = useUiStore.getState;
   const [today] = useState(todayKey);
   const [text, setText] = useState("");
+  const [amountText, setAmountText] = useState("");
   const [manual, setManual] = useState<Partial<Fields>>({});
   const [locks, setLocks] = useState<Locks>({});
+  const [more, setMore] = useState(false);
+  const whatRef = useRef<HTMLInputElement>(null);
 
   const local = useMemo(() => Object.values(receipts), [receipts]);
   const memory = useMemo(() => buildMerchantMemory(local), [local]);
@@ -85,12 +95,19 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
       .slice(0, 5);
   }, [local]);
 
-  // Parsed line + what we know about the shop, overridden by hand-edited fields.
+  // Categories you use most come first.
+  const categories = useMemo(() => {
+    const count = new Map<Category, number>();
+    for (const r of local) count.set(r.draft.category, (count.get(r.draft.category) ?? 0) + 1);
+    return [...CATEGORIES].sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0));
+  }, [local]);
+
+  // Parsed note + what we know about the shop, overridden by hand-edited fields.
   const parsed = parseQuickAdd(text, today);
   const known = memory.get(normalizeName(parsed.name));
   const fields: Fields = {
     amount: locks.amount ? (manual.amount ?? 0) : (parsed.amount ?? 0),
-    name: locks.name ? (manual.name ?? "") : (known?.name ?? parsed.name),
+    name: known?.name ?? parsed.name,
     category: locks.category ? manual.category! : (parsed.category ?? known?.category ?? "General"),
     paymentMethod: locks.paymentMethod
       ? manual.paymentMethod!
@@ -139,6 +156,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
       action: { label: t("quick.open"), onClick: () => router.push(`/studio?id=${id}`) },
     });
     setText("");
+    setAmountText("");
     setManual({});
     setLocks({});
     if (open) router.push(`/studio?id=${id}`);
@@ -149,6 +167,17 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   const walletOptions = [...new Set([...local.map((r) => r.draft.wallet).filter(Boolean), ...COMMON_WALLETS])].map(
     (value) => ({ value }),
   );
+  // Show the amount the note contains until the user types one themselves.
+  const amountShown = locks.amount ? amountText : parsed.amount ? formatAmount(parsed.amount, currency) : "";
+  const payLabel = (p: string) => t(`pm.${p}` as MessageKey);
+  const summary = [
+    payLabel(fields.paymentMethod),
+    fields.wallet,
+    fields.date === today ? t("list.today") : fields.date,
+    ...fields.tags.map((tag) => `#${tag}`),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <form
@@ -158,25 +187,58 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
       }}
       className="space-y-4"
     >
-      <div className="relative">
-        <Zap className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-viz-accent" aria-hidden />
+      {/* Amount: the one thing every expense needs. */}
+      <div className="flex items-center justify-center gap-2 rounded-2xl bg-surface-muted px-4 py-3">
+        <select
+          aria-label={t("field.currency")}
+          value={currency}
+          onChange={(e) => setCurrencyChoice(e.target.value as Currency)}
+          className="rounded-md border-0 bg-transparent p-1 text-sm font-semibold text-muted"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
         <input
           autoFocus
+          aria-label={t("quick.amountLabel")}
+          inputMode="decimal"
+          placeholder="0.00"
+          value={amountShown}
+          onChange={(e) => {
+            const v = e.target.value.replace(/[^\d.,]/g, "").slice(0, 10);
+            setAmountText(v);
+            edit("amount", parseAmountText(v));
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !canSave) {
+              e.preventDefault();
+              whatRef.current?.focus();
+            }
+          }}
+          className="w-full min-w-0 bg-transparent text-center text-4xl font-semibold tracking-tight tabular-nums outline-none placeholder:text-muted/40"
+        />
+      </div>
+
+      <label className="block space-y-1.5">
+        <span className="block text-xs font-medium text-muted">{t("quick.whatFor")}</span>
+        <input
+          ref={whatRef}
           aria-label={t("quick.inputLabel")}
-          placeholder={t("quick.placeholder")}
+          placeholder={t("quick.whatPh")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           autoComplete="off"
           enterKeyHint="done"
-          className={`${inputClass} py-3 pr-10 pl-10 text-base`}
+          maxLength={120}
+          className={`${inputClass} py-2.5 text-base`}
         />
-        <CornerDownLeft className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted" aria-hidden />
-      </div>
+      </label>
 
-      {recent.length > 0 && !text && (
+      {recent.length > 0 && !text && !amountShown && (
         <div>
           <p className="mb-1.5 text-[11px] font-medium text-muted">{t("quick.again")}</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
             {recent.map((d) => (
               <button
                 key={`${d.items[0].name}-${d.items[0].price}`}
@@ -192,7 +254,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
                     tags: d.tags.filter((tag) => tag !== "recurring"),
                   })
                 }
-                className="rounded-full px-3 py-1.5 text-xs ring-1 ring-border transition-colors hover:bg-surface-muted"
+                className="shrink-0 rounded-full px-3 py-1.5 text-xs whitespace-nowrap ring-1 ring-border transition-colors hover:bg-surface-muted"
               >
                 <span className="font-medium">{d.merchantName || d.items[0].name}</span>{" "}
                 <span className="text-muted tabular-nums">{formatAmount(d.items[0].price, d.currency)}</span>
@@ -202,42 +264,12 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      <div className="grid grid-cols-[1fr_7.5rem] gap-3">
-        <label className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted">{t("quick.what")}</span>
-          <input
-            className={inputClass}
-            value={fields.name}
-            maxLength={60}
-            onChange={(e) => edit("name", e.target.value)}
-          />
-        </label>
-        <label className="space-y-1.5">
-          <span className="flex items-center justify-between text-xs font-medium text-muted">
-            {t("quick.amountLabel")}
-            <select
-              aria-label={t("field.currency")}
-              value={currency}
-              onChange={(e) => setCurrencyChoice(e.target.value as Currency)}
-              className="rounded border-0 bg-transparent p-0 text-xs font-semibold text-foreground"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </span>
-          <NumberInput
-            value={fields.amount}
-            decimals={2}
-            max={1_000_000}
-            onValueChange={(v) => edit("amount", v)}
-            className="text-right font-semibold"
-          />
-        </label>
-      </div>
-
-      <div role="radiogroup" aria-label={t("field.category")} className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
-        {CATEGORIES.map((c) => {
+      <div
+        role="radiogroup"
+        aria-label={t("field.category")}
+        className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+      >
+        {categories.map((c) => {
           const Icon = CATEGORY_ICONS[c];
           const active = fields.category === c;
           return (
@@ -247,80 +279,103 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
               role="radio"
               aria-checked={active}
               onClick={() => edit("category", c)}
-              className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
                 active ? "bg-accent text-accent-contrast" : "text-muted ring-1 ring-border hover:text-foreground"
               }`}
             >
-              <Icon className="size-4" aria-hidden />
-              <span className="line-clamp-1">{t(`cat.${c}` as MessageKey)}</span>
+              <Icon className="size-3.5" aria-hidden />
+              {t(`cat.${c}` as MessageKey)}
             </button>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <label className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted">{t("field.paymentMethod")}</span>
-          <select
-            className={inputClass}
-            value={fields.paymentMethod}
-            onChange={(e) => edit("paymentMethod", e.target.value as Fields["paymentMethod"])}
-          >
-            {PAYMENT_METHODS.map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted">{t("field.wallet")}</span>
-          <Combobox
-            className={inputClass}
-            maxLength={30}
-            value={fields.wallet}
-            onChange={(v) => edit("wallet", v)}
-            options={walletOptions}
-          />
-        </label>
-        <label className="space-y-1.5">
-          <span className="block text-xs font-medium text-muted">{t("quick.date")}</span>
-          <input
-            type="date"
-            className={inputClass}
-            value={fields.date}
-            max={today}
-            onChange={(e) => e.target.value && edit("date", e.target.value)}
-          />
-        </label>
+      {/* Payment, wallet and date: sensible defaults, one tap away. */}
+      <div className="rounded-xl ring-1 ring-border">
+        <button
+          type="button"
+          aria-expanded={more}
+          onClick={() => setMore((m) => !m)}
+          className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-sm"
+        >
+          <span className="min-w-0 truncate">
+            <span className="text-muted">{t("quick.more")}: </span>
+            {summary}
+          </span>
+          <ChevronDown className={`size-4 shrink-0 text-muted transition-transform ${more ? "rotate-180" : ""}`} aria-hidden />
+        </button>
+        {more && (
+          <div className="grid grid-cols-2 gap-3 border-t border-border p-3">
+            <label className="space-y-1.5">
+              <span className="block text-xs font-medium text-muted">{t("field.paymentMethod")}</span>
+              <select
+                className={inputClass}
+                value={fields.paymentMethod}
+                onChange={(e) => edit("paymentMethod", e.target.value as Fields["paymentMethod"])}
+              >
+                {PAYMENT_METHODS.map((p) => (
+                  <option key={p} value={p}>
+                    {payLabel(p)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="block text-xs font-medium text-muted">{t("field.wallet")}</span>
+              <Combobox
+                className={inputClass}
+                maxLength={30}
+                value={fields.wallet}
+                onChange={(v) => edit("wallet", v)}
+                options={walletOptions}
+              />
+            </label>
+            <label className="col-span-2 space-y-1.5">
+              <span className="block text-xs font-medium text-muted">{t("quick.date")}</span>
+              <input
+                type="date"
+                className={inputClass}
+                value={fields.date}
+                max={today}
+                onChange={(e) => e.target.value && edit("date", e.target.value)}
+              />
+            </label>
+          </div>
+        )}
       </div>
 
-      {fields.tags.length > 0 && (
-        <p className="flex flex-wrap gap-1 text-xs text-muted">
-          {fields.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-surface-muted px-2 py-0.5">
-              #{tag}
-            </span>
-          ))}
-        </p>
-      )}
+      <button type="submit" disabled={!canSave} className={`${buttonStyles.primary} h-12 w-full rounded-xl text-base`}>
+        {canSave
+          ? t("quick.addAmount", { amount: `${currency} ${formatAmount(fields.amount, currency)}` })
+          : t("quick.add")}
+      </button>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-        <button type="button" onClick={() => openScan()} className={buttonStyles.ghost}>
-          <Camera className="size-4" aria-hidden />
+      {/* Other ways to add, kept small. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
+        <button type="button" onClick={() => ui().openScan()} className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground">
+          <Camera className="size-3.5" aria-hidden />
           {t("quick.scanInstead")}
         </button>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={!canSave}
-            onClick={() => save(fields, true)}
-            className={buttonStyles.secondary}
-          >
-            {t("quick.addAndEdit")}
-          </button>
-          <button type="submit" disabled={!canSave} className={buttonStyles.primary}>
-            {t("quick.add")}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            onDone();
+            ui().setImportOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground"
+        >
+          <FileUp className="size-3.5" aria-hidden />
+          {t("import.button")}
+        </button>
+        <button
+          type="button"
+          disabled={!canSave}
+          onClick={() => save(fields, true)}
+          className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground disabled:opacity-40"
+        >
+          <PenLine className="size-3.5" aria-hidden />
+          {t("quick.addAndEdit")}
+        </button>
       </div>
     </form>
   );
@@ -331,7 +386,7 @@ export function QuickAddDialog() {
   const open = useUiStore((s) => s.quickAddOpen);
   const setOpen = useUiStore((s) => s.setQuickAddOpen);
   return (
-    <Dialog open={open} onClose={() => setOpen(false)} title={t("quick.title")} description={t("quick.subtitle")}>
+    <Dialog open={open} onClose={() => setOpen(false)} title={t("quick.title")} sheet>
       {open && <QuickAddForm onDone={() => setOpen(false)} />}
     </Dialog>
   );

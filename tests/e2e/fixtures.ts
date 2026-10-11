@@ -40,3 +40,12 @@ export async function goStep(page: Page, label: "Shop" | "Items" | "Payment" | "
     .getByRole("button", { name: new RegExp(`${label}$`) })
     .click();
 }
+
+/** Open a collapsed "More options" section in the editor by its title. */
+export async function openMore(page: Page, title: string) {
+  const details = page.locator("details", { has: page.locator("summary", { hasText: title }) });
+  if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator("summary").click();
+}
+
+/** The Add expense submit button ("Add expense", or "Add MYR 12.90" once filled in). */
+export const addButton = (page: Page) => page.getByRole("button", { name: /^Add (expense|[A-Z]{3} [\d.,]+)$/ });

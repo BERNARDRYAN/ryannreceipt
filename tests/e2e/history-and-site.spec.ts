@@ -1,13 +1,14 @@
-import { expect, goStep, test } from "./fixtures";
+import { expect, goStep, openMore, test } from "./fixtures";
 
 test("receipts made in the studio appear in History with summaries", async ({ page }) => {
   await page.goto("/studio");
   await page.getByLabel("Store name").fill("History Mart");
   await goStep(page, "Payment");
+  await openMore(page, "Wallet, warranty, tags & photo");
   await page.getByLabel("Warranty until").fill("2099-01-31");
 
-  await page.getByRole("link", { name: "History", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "History", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Spending", level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: /History Mart/ }).first()).toBeVisible();
   await expect(page.getByText("Monthly spend")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Warranty tracker" })).toBeVisible();
@@ -46,9 +47,10 @@ test("deleting from History can be undone", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Undo Store/ }).first()).toBeVisible();
 });
 
-test("landing page leads to the studio", async ({ page }) => {
+test("landing page leads to tracking and the receipt maker", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Receipts that look printed.");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Track your spending in seconds.");
+  await expect(page.getByRole("link", { name: "Start tracking" })).toHaveAttribute("href", "/history");
   await expect(page.locator(".receipt-paper")).toContainText(/ryann kopitiam/i);
   await page.getByRole("link", { name: "Make a receipt" }).click();
   await expect(page).toHaveURL(/\/studio$/);

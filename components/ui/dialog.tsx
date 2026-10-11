@@ -11,10 +11,12 @@ type DialogProps = {
   /** Footer buttons. */
   actions?: ReactNode;
   size?: "md" | "lg";
+  /** On phones, slide up from the bottom like a native sheet (centred on larger screens). */
+  sheet?: boolean;
 };
 
 /** Modal built on native <dialog>: focus trap, Esc and inert background for free. */
-export function Dialog({ open, onClose, title, description, children, actions, size = "md" }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, actions, size = "md", sheet = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -36,7 +38,11 @@ export function Dialog({ open, onClose, title, description, children, actions, s
       aria-labelledby={titleId}
       className={`m-auto w-[calc(100%-2rem)] ${
         size === "lg" ? "max-w-3xl" : "max-w-md"
-      } max-h-[calc(100dvh-2rem)] rounded-2xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-[2px] open:animate-[dialog-in_180ms_ease-out]`}
+      } max-h-[calc(100dvh-2rem)] rounded-2xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-[2px] open:animate-[dialog-in_180ms_ease-out] ${
+        sheet
+          ? "max-sm:mt-auto max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[env(safe-area-inset-bottom)] max-sm:open:animate-[sheet-in_280ms_cubic-bezier(0.2,0.8,0.2,1)]"
+          : ""
+      }`}
     >
       <div className="space-y-3 p-5">
         <h2 id={titleId} className="text-base font-semibold">

@@ -4,8 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "RyannReceipt",
     short_name: "Receipt",
-    description: "Retro thermal-receipt generator and expense & warranty tracker. Part of the Ryann Suite.",
-    start_url: "/studio",
+    description: "Expense tracker with one-tap logging, budgets, split bills and printed-style receipts. Part of the Ryann Suite.",
+    start_url: "/history",
     scope: "/",
     display: "standalone",
     background_color: "#f3f1ec",
@@ -24,8 +24,8 @@ export default function manifest(): MetadataRoute.Manifest {
       params: { files: [{ name: "receipt", accept: ["image/*"] }] },
     },
     shortcuts: [
-      { name: "New receipt", url: "/studio", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
-      { name: "History & warranties", url: "/history", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
+      { name: "Add expense", url: "/history?add=1", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
+      { name: "Receipt maker", url: "/studio", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
     ],
   };
 }

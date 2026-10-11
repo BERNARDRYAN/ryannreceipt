@@ -1,4 +1,4 @@
-import { expect, goStep, paper, test } from "./fixtures";
+import { expect, goStep, openMore, paper, test } from "./fixtures";
 
 // Note: the receipt uppercases text with CSS, so text assertions match case-insensitively.
 
@@ -11,7 +11,7 @@ test("editing the form updates the live receipt", async ({ page }) => {
   await page.getByLabel("Store name").fill("Kedai Test");
   await expect(paper(page)).toContainText(/kedai test/i);
 
-  await page.getByText("Cashier, table & order type").click();
+  await openMore(page, "More options: address, logo, receipt no.");
   await page.getByLabel("Cashier").fill("siti");
   await expect(paper(page)).toContainText("CASHIER:");
   await expect(paper(page)).toContainText(/siti/i);
@@ -162,10 +162,10 @@ test("language, theme and shortcuts live in Settings", async ({ page }) => {
   await page.getByRole("radio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("radio", { name: "中文" }).click();
-  await expect(page.getByRole("link", { name: "记录" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "首页", exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole("link", { name: "记录" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "首页", exact: true })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
 
@@ -173,7 +173,7 @@ test("desktop studio fits the viewport; only the editor panel scrolls", async ({
   // Regression: absolutely positioned sr-only inputs deep in the editor used to
   // stretch the document and make the whole page scroll into empty space.
   await goStep(page, "Look");
-  await page.getByText("More options").click();
+  await page.getByText("More options", { exact: true }).click();
   const { scrollHeight, innerHeight } = await page.evaluate(() => ({
     scrollHeight: document.documentElement.scrollHeight,
     innerHeight: window.innerHeight,

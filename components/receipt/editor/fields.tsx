@@ -23,9 +23,9 @@ export function Group({ title, children, action }: { title: string; children: Re
 }
 
 /** Collapsed-by-default extras, so each step shows only what most people need. */
-export function MoreOptions({ title, children }: { title: string; children: ReactNode }) {
+export function MoreOptions({ title, children, defaultOpen = false }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
   return (
-    <details className="group rounded-xl border border-border bg-surface-muted/40">
+    <details open={defaultOpen || undefined} className="group rounded-xl border border-border bg-surface-muted/40">
       <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium select-none [&::-webkit-details-marker]:hidden">
         {title}
         <ChevronDown className="size-4 text-muted transition-transform group-open:rotate-180" aria-hidden />
