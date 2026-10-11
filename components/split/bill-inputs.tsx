@@ -72,6 +72,7 @@ export function AddDishRow({
       <button
         type="submit"
         disabled={amount <= 0}
+        aria-label={t("split.addDishLabel")}
         className="inline-flex items-center justify-center gap-1 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-contrast disabled:opacity-40 sm:order-4"
       >
         <Plus className="size-4" aria-hidden />

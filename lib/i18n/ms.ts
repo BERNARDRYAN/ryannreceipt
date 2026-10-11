@@ -723,4 +723,5 @@ export const ms: Messages = {
   "split.none": "Tiada",
   "split.otherPct": "lain",
   "split.billTotal": "Jumlah bil (semak sama dengan resit)",
+  "split.addDishLabel": "Tambah ke bil",
 };

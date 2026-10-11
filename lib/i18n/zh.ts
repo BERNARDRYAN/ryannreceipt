@@ -722,4 +722,5 @@ export const zh: Messages = {
   "split.none": "无",
   "split.otherPct": "其他",
   "split.billTotal": "账单总额（请核对收据）",
+  "split.addDishLabel": "加入账单",
 };

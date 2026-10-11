@@ -280,12 +280,12 @@ test("split a quick expense by what each person had, with service charge and SST
   await page.getByRole("button", { name: "Split bill with friends" }).click();
   const dialog = page.getByRole("dialog", { name: "Split the bill" });
   await dialog.getByPlaceholder("Name, e.g. Ali").fill("Ali");
-  await dialog.getByRole("button", { name: "Add", exact: true }).first().click();
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(dialog.getByText(/This expense is one amount \(MYR 50\.00\)/)).toBeVisible();
 
   const who = dialog.getByLabel("Who had it");
   const price = dialog.getByLabel("Price");
-  const add = dialog.locator("form", { has: page.getByLabel("Who had it") }).getByRole("button", { name: "Add" });
+  const add = dialog.getByRole("button", { name: "Add to the bill" });
   await who.selectOption({ label: "Ali" });
   await price.fill("12.50");
   await add.click();

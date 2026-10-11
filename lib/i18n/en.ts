@@ -743,4 +743,5 @@ export const en = {
   "split.none": "None",
   "split.otherPct": "other",
   "split.billTotal": "Bill total (check it matches the receipt)",
+  "split.addDishLabel": "Add to the bill",
 } as const;
