@@ -207,3 +207,27 @@ test("add a warranty from Home in a few taps; empty tools fold back", async ({ p
   await expect(page.getByRole("heading", { name: "Recurring" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Recurring/ })).toBeVisible();
 });
+
+test("tap an expense to edit it in the simple sheet", async ({ page }) => {
+  await page.goto("/history");
+  await quickAdd(page, "teh tarik 3.20 cash");
+  await page.getByRole("link", { name: /Teh Tarik/ }).click();
+
+  const sheet = page.getByRole("dialog", { name: "Edit expense" });
+  await expect(sheet.getByLabel("Expense", { exact: true })).toHaveValue("Teh Tarik");
+  await sheet.getByLabel("Amount", { exact: true }).fill("4.50");
+  await sheet.getByRole("radio", { name: "Groceries" }).click();
+  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Changes saved")).toBeVisible();
+  const row = page.getByRole("link", { name: /Teh Tarik/ });
+  await expect(row).toContainText("4.50");
+  await expect(row).toContainText("Groceries");
+  await expect(page).toHaveURL(/\/history$/);
+
+  // An itemised receipt keeps its amount; items are edited in the receipt maker.
+  await page.getByRole("link", { name: /Ryann Kopitiam/ }).click();
+  await expect(sheet.getByText(/Itemised receipt/)).toBeVisible();
+  await expect(sheet.getByLabel("Amount", { exact: true })).toHaveAttribute("readonly", "");
+  await sheet.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("link", { name: /Ryann Kopitiam/ })).toHaveCount(0);
+});

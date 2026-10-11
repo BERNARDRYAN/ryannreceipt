@@ -660,4 +660,9 @@ export const zh: Messages = {
   "warranty.saved": "{name} 的保修已保存，至 {date}",
   "warranty.noneToAdd": "所有购买都已有保修日期。",
   "warranty.year1": "1 年",
+  "edit.title": "编辑开销",
+  "edit.save": "保存修改",
+  "edit.saved": "已保存",
+  "edit.itemised": "这是逐项收据：请在收据制作中修改商品和费用。",
+  "edit.openReceipt": "打开收据",
 };

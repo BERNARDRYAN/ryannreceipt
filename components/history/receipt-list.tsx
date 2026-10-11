@@ -140,6 +140,7 @@ export function ReceiptList({
   onDuplicate,
   onDelete,
   onSplit,
+  onOpen,
   showSyncState,
   convertTo,
   homeCurrency,
@@ -156,6 +157,8 @@ export function ReceiptList({
   onDuplicate: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
   onSplit: (entry: HistoryEntry) => void;
+  /** Plain click on a row (a new tab still opens the receipt maker). */
+  onOpen: (entry: HistoryEntry) => void;
 }) {
   const t = useT();
   const ml = useMonthLabel();
@@ -297,6 +300,11 @@ export function ReceiptList({
                     >
                   <Link
                     href={`/studio?id=${e.id}`}
+                    onClick={(ev) => {
+                      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button !== 0) return;
+                      ev.preventDefault();
+                      onOpen(e);
+                    }}
                     className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2.5 hover:bg-surface-muted"
                   >
                     <CategoryTile category={e.category} />

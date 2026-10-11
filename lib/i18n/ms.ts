@@ -661,4 +661,9 @@ export const ms: Messages = {
   "warranty.saved": "Waranti {name} disimpan hingga {date}",
   "warranty.noneToAdd": "Setiap pembelian sudah ada tarikh waranti.",
   "warranty.year1": "1 tahun",
+  "edit.title": "Sunting perbelanjaan",
+  "edit.save": "Simpan perubahan",
+  "edit.saved": "Perubahan disimpan",
+  "edit.itemised": "Resit berbutir: tukar item dan caj dalam pembuat resit.",
+  "edit.openReceipt": "Buka sebagai resit",
 };

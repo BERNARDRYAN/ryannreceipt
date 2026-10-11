@@ -681,4 +681,9 @@ export const en = {
   "warranty.saved": "Warranty for {name} saved until {date}",
   "warranty.noneToAdd": "Every purchase already has a warranty date.",
   "warranty.year1": "1 year",
+  "edit.title": "Edit expense",
+  "edit.save": "Save changes",
+  "edit.saved": "Changes saved",
+  "edit.itemised": "Itemised receipt: change items and charges in the receipt maker.",
+  "edit.openReceipt": "Open as receipt",
 } as const;

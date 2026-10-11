@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ChevronDown, FileUp, PenLine } from "lucide-react";
+import { Camera, ChevronDown, FileUp, PenLine, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
@@ -12,7 +12,7 @@ import { todayKey } from "@/lib/history/entries";
 import { useT, type MessageKey } from "@/lib/i18n/messages";
 import { buildMerchantMemory, normalizeName } from "@/lib/memory/merchants";
 import { COMMON_WALLETS } from "@/lib/quick-add/keywords";
-import { parseQuickAdd } from "@/lib/quick-add/parse";
+import { parseQuickAdd, type QuickParse } from "@/lib/quick-add/parse";
 import { createBlankDraft } from "@/lib/receipts/defaults";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useReceiptStore } from "@/lib/store/receipt-store";
@@ -58,17 +58,43 @@ function parseAmountText(text: string) {
  * whole note ("nasi lemak 12.90 tng yesterday #work"), shops are remembered,
  * and payment / wallet / date wait under "More" with sensible defaults.
  */
-function QuickAddForm({ onDone }: { onDone: () => void }) {
+/** Editing an existing expense: the same sheet, filled in, with its own actions. */
+export type EditTarget = { id: string; onDelete: () => void; onSplit: () => void };
+
+const NO_PARSE: QuickParse = { amount: null, name: "", category: null, paymentMethod: null, wallet: "", date: null, tags: [] };
+
+function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: EditTarget }) {
   const t = useT();
   const router = useRouter();
   const receipts = useReceiptStore((s) => s.receipts);
   const addReceipts = useReceiptStore((s) => s.addReceipts);
+  const patchDraft = useReceiptStore((s) => s.patchDraft);
+  // Edit mode starts from the saved expense; nothing is re-parsed.
+  const [original] = useState(() => (target ? useReceiptStore.getState().receipts[target.id]?.draft : undefined));
+  const originalTotal = original ? computeTotals(original).payable : 0;
+  // Only a plain one-line expense can have its amount changed here; itemised
+  // receipts (charges, several items, a split) are edited in the receipt maker.
+  const simple =
+    !original ||
+    (original.items.length === 1 && !original.discountAmount && !original.serviceChargeRate && !original.taxRate && !original.split);
   const ui = useUiStore.getState;
   const [today] = useState(todayKey);
-  const [text, setText] = useState("");
-  const [amountText, setAmountText] = useState("");
-  const [manual, setManual] = useState<Partial<Fields>>({});
-  const [locks, setLocks] = useState<Locks>({});
+  const [text, setText] = useState(() => (original ? original.merchantName || original.items[0]?.name || "" : ""));
+  const [amountText, setAmountText] = useState(() => (original ? formatAmount(originalTotal, original.currency) : ""));
+  const [manual, setManual] = useState<Partial<Fields>>(() =>
+    original
+      ? {
+          amount: originalTotal,
+          category: original.category,
+          paymentMethod: original.paymentMethod,
+          wallet: original.wallet,
+          date: original.receiptDate.slice(0, 10),
+        }
+      : {},
+  );
+  const [locks, setLocks] = useState<Locks>(() =>
+    original ? { amount: true, category: true, paymentMethod: true, wallet: true, date: true } : {},
+  );
   const [more, setMore] = useState(false);
   const whatRef = useRef<HTMLInputElement>(null);
 
@@ -76,7 +102,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   const memory = useMemo(() => buildMerchantMemory(local), [local]);
   const lastCurrency: Currency =
     [...local].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.draft.currency ?? "MYR";
-  const [currencyChoice, setCurrencyChoice] = useState<Currency | null>(null);
+  const [currencyChoice, setCurrencyChoice] = useState<Currency | null>(original?.currency ?? null);
   const currency = currencyChoice ?? lastCurrency;
 
   // One-tap repeats: recent single-item receipts, distinct by name + price.
@@ -103,8 +129,8 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
   }, [local]);
 
   // Parsed note + what we know about the shop, overridden by hand-edited fields.
-  const parsed = parseQuickAdd(text, today);
-  const known = memory.get(normalizeName(parsed.name));
+  const parsed = target ? { ...NO_PARSE, name: text.trim() } : parseQuickAdd(text, today);
+  const known = target ? undefined : memory.get(normalizeName(parsed.name));
   const fields: Fields = {
     amount: locks.amount ? (manual.amount ?? 0) : (parsed.amount ?? 0),
     name: known?.name ?? parsed.name,
@@ -114,7 +140,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
       : (parsed.paymentMethod ?? known?.paymentMethod ?? "CASH"),
     wallet: locks.wallet ? (manual.wallet ?? "") : parsed.wallet || known?.wallet || "",
     date: locks.date ? (manual.date ?? today) : (parsed.date ?? today),
-    tags: parsed.tags.length ? parsed.tags : (known?.tags ?? []),
+    tags: original ? original.tags : parsed.tags.length ? parsed.tags : (known?.tags ?? []),
   };
 
   function edit<K extends keyof Fields>(key: K, value: Fields[K]) {
@@ -124,6 +150,33 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
 
   function save(source: Fields, open = false) {
     if (!(source.amount > 0) || !source.name.trim()) return;
+    if (target && original) {
+      const name = source.name.trim();
+      const item = original.items[0];
+      const patch: Partial<ReceiptDraft> = {
+        merchantName: name.slice(0, 60),
+        currency,
+        category: source.category,
+        paymentMethod: source.paymentMethod,
+        wallet: source.wallet.slice(0, 30),
+        // Keep the original time unless the day changed.
+        receiptDate:
+          source.date === original.receiptDate.slice(0, 10) ? original.receiptDate : `${source.date}T12:00`,
+      };
+      if (simple && item) {
+        // A one-line expense's item is named after it; keep them in step.
+        const itemName = item.name === (original.merchantName || item.name) ? name.slice(0, 80) : item.name;
+        patch.items = [{ ...item, name: itemName, qty: 1, price: source.amount }];
+      }
+      patchDraft(target.id, patch);
+      if (useAuthStore.getState().status === "signed-in") {
+        const receipt = useReceiptStore.getState().receipts[target.id];
+        if (receipt) void pushReceipts([receipt]).catch(() => undefined);
+      }
+      toast(t("edit.saved"), { tone: "success" });
+      onDone();
+      return;
+    }
     const shop = memory.get(normalizeName(source.name));
     const draft: ReceiptDraft = {
       ...createBlankDraft(),
@@ -205,6 +258,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
           inputMode="decimal"
           placeholder="0.00"
           value={amountShown}
+          readOnly={!simple}
           onChange={(e) => {
             const v = e.target.value.replace(/[^\d.,]/g, "").slice(0, 10);
             setAmountText(v);
@@ -219,6 +273,8 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
           className="w-full min-w-0 bg-transparent text-center text-4xl font-semibold tracking-tight tabular-nums outline-none placeholder:text-muted/40"
         />
       </div>
+
+      {!simple && <p className="-mt-2 text-center text-xs text-muted">{t("edit.itemised")}</p>}
 
       <label className="block space-y-1.5">
         <span className="block text-xs font-medium text-muted">{t("quick.whatFor")}</span>
@@ -235,7 +291,7 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
         />
       </label>
 
-      {recent.length > 0 && !text && !amountShown && (
+      {!target && recent.length > 0 && !text && !amountShown && (
         <div>
           <p className="mb-1.5 text-[11px] font-medium text-muted">{t("quick.again")}</p>
           <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
@@ -345,38 +401,66 @@ function QuickAddForm({ onDone }: { onDone: () => void }) {
       </div>
 
       <button type="submit" disabled={!canSave} className={`${buttonStyles.primary} h-12 w-full rounded-xl text-base`}>
-        {canSave
-          ? t("quick.addAmount", { amount: `${currency} ${formatAmount(fields.amount, currency)}` })
-          : t("quick.add")}
+        {target
+          ? t("edit.save")
+          : canSave
+            ? t("quick.addAmount", { amount: `${currency} ${formatAmount(fields.amount, currency)}` })
+            : t("quick.add")}
       </button>
 
-      {/* Other ways to add, kept small. */}
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
-        <button type="button" onClick={() => ui().openScan()} className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground">
-          <Camera className="size-3.5" aria-hidden />
-          {t("quick.scanInstead")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onDone();
-            ui().setImportOpen(true);
-          }}
-          className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground"
-        >
-          <FileUp className="size-3.5" aria-hidden />
-          {t("import.button")}
-        </button>
-        <button
-          type="button"
-          disabled={!canSave}
-          onClick={() => save(fields, true)}
-          className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground disabled:opacity-40"
-        >
-          <PenLine className="size-3.5" aria-hidden />
-          {t("quick.addAndEdit")}
-        </button>
-      </div>
+      {target ? (
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
+          <button type="button" onClick={target.onSplit} className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground">
+            <Users className="size-3.5" aria-hidden />
+            {t("split.button")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onDone();
+              router.push(`/studio?id=${target.id}`);
+            }}
+            className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground"
+          >
+            <PenLine className="size-3.5" aria-hidden />
+            {t("edit.openReceipt")}
+          </button>
+          <button type="button" onClick={target.onDelete} className="inline-flex items-center gap-1.5 py-1 text-danger hover:opacity-80">
+            <Trash2 className="size-3.5" aria-hidden />
+            {t("list.delete")}
+          </button>
+        </div>
+      ) : (
+        <>
+        {/* Other ways to add, kept small. */}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
+          <button type="button" onClick={() => ui().openScan()} className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground">
+            <Camera className="size-3.5" aria-hidden />
+            {t("quick.scanInstead")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onDone();
+              ui().setImportOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground"
+          >
+            <FileUp className="size-3.5" aria-hidden />
+            {t("import.button")}
+          </button>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => save(fields, true)}
+            className="inline-flex items-center gap-1.5 py-1 text-muted hover:text-foreground disabled:opacity-40"
+          >
+            <PenLine className="size-3.5" aria-hidden />
+            {t("quick.addAndEdit")}
+          </button>
+        </div>
+        </>
+      )}
     </form>
   );
 }
@@ -388,6 +472,16 @@ export function QuickAddDialog() {
   return (
     <Dialog open={open} onClose={() => setOpen(false)} title={t("quick.title")} sheet>
       {open && <QuickAddForm onDone={() => setOpen(false)} />}
+    </Dialog>
+  );
+}
+
+/** Tap an expense: the same simple sheet, filled in. */
+export function EditExpenseDialog({ id, onClose, onDelete, onSplit }: { id: string | null; onClose: () => void } & Omit<EditTarget, "id">) {
+  const t = useT();
+  return (
+    <Dialog open={id !== null} onClose={onClose} title={t("edit.title")} sheet>
+      {id && <QuickAddForm key={id} onDone={onClose} edit={{ id, onDelete, onSplit }} />}
     </Dialog>
   );
 }

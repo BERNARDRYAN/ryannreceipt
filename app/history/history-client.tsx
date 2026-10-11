@@ -12,6 +12,7 @@ import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
 import { MoreTools, type Tool } from "@/components/history/more-tools";
 import { MobileTabBar } from "@/components/mobile-tab-bar";
+import { EditExpenseDialog } from "@/components/quick-add/quick-add-dialog";
 import { friendBalances, FriendsCard } from "@/components/history/owed";
 import { YearReviewDialog } from "@/components/history/year-review";
 import { ReceiptList, type ListFilters } from "@/components/history/receipt-list";
@@ -105,6 +106,7 @@ export function HistoryClient() {
   // Empty tools live folded in "More tools" until opened (or until they have data).
   const [openedTools, setOpenedTools] = useState<Set<string>>(() => new Set());
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const openScan = useUiStore((s) => s.openScan);
   const uploading = useSyncState((s) => s.saving);
 
@@ -250,6 +252,16 @@ export function HistoryClient() {
   }
 
   /** Split needs the full receipt locally; pull it first if it only lives in the cloud. */
+  /** Tap an expense: the simple edit sheet (cloud-only ones are fetched first). */
+  async function openEdit(id: string) {
+    try {
+      if (!useReceiptStore.getState().receipts[id]) await pullReceipt(id);
+      setEditId(id);
+    } catch {
+      toast(t("studio.openFailed"), { tone: "error" });
+    }
+  }
+
   async function openSplit(id: string) {
     try {
       if (!useReceiptStore.getState().receipts[id]) await pullReceipt(id);
@@ -636,6 +648,7 @@ export function HistoryClient() {
                 onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
                 onSplit={(entry) => void openSplit(entry.id)}
+                onOpen={(entry) => void openEdit(entry.id)}
               />
               <div className="space-y-4">
                 {show("friends") &&
@@ -708,6 +721,20 @@ export function HistoryClient() {
         )}
       </main>
       <BudgetsDialog currency={currency} open={budgetOpen} onClose={() => setBudgetOpen(false)} />
+      <EditExpenseDialog
+        id={editId}
+        onClose={() => setEditId(null)}
+        onSplit={() => {
+          const id = editId;
+          setEditId(null);
+          if (id) void openSplit(id);
+        }}
+        onDelete={() => {
+          const entry = entries?.find((e) => e.id === editId);
+          setEditId(null);
+          if (entry) handleDelete(entry);
+        }}
+      />
       <MobileTabBar current="history" />
       {hydrated && <YearReviewDialog entries={inCurrency} currency={currency} today={today} />}
     </div>
