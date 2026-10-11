@@ -14,7 +14,8 @@
     "cf:deploy": "opennextjs-cloudflare build && node scripts/check-worker-size.mjs && opennextjs-cloudflare deploy",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "cf:size": "node scripts/check-worker-size.mjs"
+    "cf:size": "node scripts/check-worker-size.mjs",
+    "postinstall": "node scripts/patch-opennext.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
