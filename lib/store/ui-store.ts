@@ -14,6 +14,8 @@ type UiStore = {
   payInfoOpen: boolean;
   lockSettingsOpen: boolean;
   shareLinkReceiptId: string | null;
+  importOpen: boolean;
+  reviewYear: string | null;
   setQuickAddOpen: (open: boolean) => void;
   openScan: (file?: File | null) => void;
   closeScan: () => void;
@@ -22,6 +24,8 @@ type UiStore = {
   setPayInfoOpen: (open: boolean) => void;
   setLockSettingsOpen: (open: boolean) => void;
   setShareLinkReceiptId: (id: string | null) => void;
+  setImportOpen: (open: boolean) => void;
+  setReviewYear: (year: string | null) => void;
 };
 
 export const useUiStore = create<UiStore>()((set) => ({
@@ -33,6 +37,8 @@ export const useUiStore = create<UiStore>()((set) => ({
   payInfoOpen: false,
   lockSettingsOpen: false,
   shareLinkReceiptId: null,
+  importOpen: false,
+  reviewYear: null,
   setQuickAddOpen: (quickAddOpen) => set({ quickAddOpen }),
   openScan: (file = null) => set({ scanOpen: true, scanFile: file, quickAddOpen: false }),
   closeScan: () => set({ scanOpen: false, scanFile: null }),
@@ -41,4 +47,6 @@ export const useUiStore = create<UiStore>()((set) => ({
   setPayInfoOpen: (payInfoOpen) => set({ payInfoOpen }),
   setLockSettingsOpen: (lockSettingsOpen) => set({ lockSettingsOpen }),
   setShareLinkReceiptId: (shareLinkReceiptId) => set({ shareLinkReceiptId }),
+  setImportOpen: (importOpen) => set({ importOpen }),
+  setReviewYear: (reviewYear) => set({ reviewYear }),
 }));

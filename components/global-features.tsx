@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
+import { ImportDialog } from "@/components/import/import-dialog";
 import { QuickAddDialog } from "@/components/quick-add/quick-add-dialog";
 import { ShareLinkDialog } from "@/components/share/share-link-dialog";
 import { PayInfoDialog } from "@/components/split/pay-info-dialog";
@@ -74,6 +75,7 @@ export function GlobalFeatures() {
       <SplitDialog />
       <PayInfoDialog />
       <ShareLinkDialog />
+      <ImportDialog />
     </>
   );
 }

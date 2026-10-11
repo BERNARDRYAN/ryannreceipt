@@ -1,6 +1,6 @@
 "use client";
 
-import { CloudOff, Copy, FileDown, Link2, MoreHorizontal, Pin, PinOff, Search, ShieldCheck, Trash2, Users, X } from "lucide-react";
+import { CloudOff, Copy, FileDown, FileUp, Link2, MoreHorizontal, Pin, PinOff, Search, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef } from "react";
 
@@ -223,6 +223,14 @@ export function ReceiptList({
               </button>
             ) : null,
           )}
+          <button
+            type="button"
+            onClick={() => useUiStore.getState().setImportOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-muted ring-1 ring-border hover:bg-surface-muted hover:text-foreground"
+          >
+            <FileUp className="size-4" aria-hidden />
+            {t("import.button")}
+          </button>
           <button
             type="button"
             onClick={exportCsv}
