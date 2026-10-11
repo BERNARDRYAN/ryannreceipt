@@ -43,11 +43,15 @@ type ReceiptMeta = Pick<
   | "cashier"
   | "tableNo"
   | "orderType"
+  | "wallet"
+  | "tags"
+  | "taxRelief"
+  | "hasPhoto"
 > & { serviceCharge: number; rounding: number; v: 1 };
 
 /** Lightweight columns for list/summary views (no items, no logo). */
 export const RECEIPT_SUMMARY_COLUMNS =
-  "id,title,merchant_name,receipt_no,receipt_date,currency,total,category,payment_method,warranty_until,is_pinned,updated_at";
+  "id,title,merchant_name,receipt_no,receipt_date,currency,total,category,payment_method,warranty_until,is_pinned,meta,updated_at";
 
 export type ReceiptSummaryRow = Pick<
   ReceiptRow,
@@ -62,6 +66,7 @@ export type ReceiptSummaryRow = Pick<
   | "payment_method"
   | "warranty_until"
   | "is_pinned"
+  | "meta"
   | "updated_at"
 >;
 
@@ -84,6 +89,10 @@ export function draftToRow(id: string, userId: string, isPinned: boolean, draft:
     cashier: draft.cashier,
     tableNo: draft.tableNo,
     orderType: draft.orderType,
+    wallet: draft.wallet,
+    tags: draft.tags,
+    taxRelief: draft.taxRelief,
+    hasPhoto: draft.hasPhoto,
     serviceCharge: t.serviceCharge,
     rounding: t.rounding,
     v: 1,
@@ -144,6 +153,10 @@ export function rowToRecord(row: ReceiptRow) {
     ...(meta.cashier !== undefined && { cashier: meta.cashier }),
     ...(meta.tableNo !== undefined && { tableNo: meta.tableNo }),
     ...(meta.orderType !== undefined && { orderType: meta.orderType }),
+    ...(meta.wallet !== undefined && { wallet: meta.wallet }),
+    ...(meta.tags !== undefined && { tags: meta.tags }),
+    ...(meta.taxRelief !== undefined && { taxRelief: meta.taxRelief }),
+    ...(meta.hasPhoto !== undefined && { hasPhoto: meta.hasPhoto }),
   });
   return { id: row.id, isPinned: row.is_pinned, draft, updatedAt: row.updated_at };
 }

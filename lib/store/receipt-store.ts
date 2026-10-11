@@ -76,6 +76,15 @@ type ReceiptStore = {
   newReceipt: () => string;
   /** Add a receipt built elsewhere (templates) and open it. */
   createReceipt: (draft: ReceiptDraft) => string;
+  /**
+   * Add receipts in the background (quick add, recurring, scans) without
+   * changing the open one. Ids that already exist are skipped.
+   */
+  addReceipts: (entries: { id?: string; draft: ReceiptDraft }[]) => string[];
+  /** Patch any receipt by id (no undo step), e.g. after a background photo upload. */
+  patchDraft: (id: string, patch: Partial<ReceiptDraft>) => void;
+  /** Fill shop details remembered from earlier receipts, as one undo step. */
+  applyMerchant: (patch: Partial<ReceiptDraft>) => void;
   openReceipt: (id: string) => void;
   duplicateReceipt: (id: string) => string | null;
   deleteReceipt: (id: string) => LocalReceipt | null;
@@ -247,6 +256,29 @@ export const useReceiptStore = create<ReceiptStore>()(
           }));
           return receipt.id;
         },
+        addReceipts: (entries) => {
+          const s = get();
+          const receipts = { ...s.receipts };
+          const added: string[] = [];
+          for (const { id, draft } of entries) {
+            if (id && receipts[id]) continue;
+            const serial = issueSerial();
+            const receipt = makeReceipt({ ...draft, receiptNo: `RR-${serial}`, barcodeData: `RR${serial}` });
+            if (id) receipt.id = id;
+            receipts[receipt.id] = receipt;
+            added.push(receipt.id);
+          }
+          if (added.length) set({ receipts: prune(receipts, s.activeId) });
+          return added;
+        },
+        patchDraft: (id, patch) =>
+          set((s) => {
+            const r = s.receipts[id];
+            return r
+              ? { receipts: { ...s.receipts, [id]: { ...r, draft: { ...r.draft, ...patch }, updatedAt: nowIso() } } }
+              : s;
+          }),
+        applyMerchant: (patch) => editActive((d) => ({ ...d, ...patch })),
         openReceipt: (id) => {
           const s = get();
           if (s.receipts[id] && s.activeId !== id) set({ activeId: id, ...resetHistory });

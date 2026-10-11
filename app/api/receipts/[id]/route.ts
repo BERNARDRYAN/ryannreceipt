@@ -71,5 +71,7 @@ export async function DELETE(request: NextRequest, routeCtx: RouteContext<"/api/
 
   const { error } = await ctx.supabase.from("receipt_items").delete().eq("id", id).eq("user_id", ctx.user.id);
   if (error) return dbError("delete receipt", error);
+  // Best effort: a receipt may have no photo.
+  await ctx.supabase.storage.from("receipt-photos").remove([`${ctx.user.id}/${id}.jpg`]);
   return json({ ok: true });
 }

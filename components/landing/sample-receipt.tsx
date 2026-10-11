@@ -29,6 +29,10 @@ const SAMPLE: ReceiptDraft = {
   barcodeData: "RR240611",
   qrData: "",
   warrantyUntil: "",
+  wallet: "",
+  tags: [],
+  taxRelief: "",
+  hasPhoto: false,
   items: [
     { id: "00000000-0000-4000-8000-000000000001", name: "Kopi O Kosong", qty: 2, price: 2.8 },
     { id: "00000000-0000-4000-8000-000000000002", name: "Roti Bakar Kaya", qty: 1, price: 4.5 },

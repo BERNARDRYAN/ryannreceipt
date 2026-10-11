@@ -1,10 +1,11 @@
 "use client";
 
 import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { fieldDomId, Group, inputClass, NumberInput } from "@/components/receipt/editor/fields";
 import { useT } from "@/lib/i18n/messages";
+import { buildItemMemory, normalizeName } from "@/lib/memory/merchants";
 import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
 import { currencyDecimals, formatAmount, lineTotal } from "@/lib/utils/currency";
 
@@ -25,6 +26,9 @@ export function ItemsEditor() {
   const [focusNewId, setFocusNewId] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const receipts = useReceiptStore((s) => s.receipts);
+  // Items bought before (any shop), for autocomplete with their last price.
+  const known = useMemo(() => buildItemMemory(Object.values(receipts)), [receipts]);
 
   if (!draft) return null;
   const { items, currency } = draft;
@@ -135,7 +139,13 @@ export function ItemsEditor() {
               className={inputClass}
               maxLength={80}
               value={item.name}
-              onChange={(e) => updateItem(item.id, { name: e.target.value })}
+              list="item-memory"
+              onChange={(e) => {
+                const name = e.target.value;
+                const match = known.get(normalizeName(name));
+                // Picking a known item fills its last price if none is set yet.
+                updateItem(item.id, match && item.price === 0 ? { name, price: match.price } : { name });
+              }}
               onKeyDown={(e) => handleEnter(e, index)}
             />
             <NumberInput
@@ -172,6 +182,13 @@ export function ItemsEditor() {
           </li>
         ))}
       </ul>
+      <datalist id="item-memory">
+        {[...known.values()].slice(0, 200).map((k) => (
+          <option key={k.name} value={k.name}>
+            {formatAmount(k.price, currency)}
+          </option>
+        ))}
+      </datalist>
       {items.length > 0 && (
         <div className="flex items-center justify-between gap-3">
           <p className="text-[11px] text-muted">{t("items.tip")}</p>

@@ -15,12 +15,13 @@ const supabaseOrigin = (() => {
 // 'unsafe-eval' is only needed by React's dev tooling, so it is dropped in production.
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://accounts.google.com https://apis.google.com;
+  script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isDev ? " 'unsafe-eval'" : ""} https://accounts.google.com https://apis.google.com https://cdn.jsdelivr.net;
+  worker-src 'self' blob:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style;
   img-src 'self' blob: data: https://*.googleusercontent.com ${supabaseOrigin};
   font-src 'self' https://fonts.gstatic.com;
   frame-src https://accounts.google.com;
-  connect-src 'self' https://accounts.google.com ${supabaseOrigin}${isDev ? " ws:" : ""};
+  connect-src 'self' https://accounts.google.com https://cdn.jsdelivr.net ${supabaseOrigin}${isDev ? " ws:" : ""};
   object-src 'none';
   base-uri 'self';
   form-action 'self';

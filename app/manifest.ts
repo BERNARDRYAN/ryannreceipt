@@ -16,6 +16,13 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
+    // Share a receipt photo from the gallery straight into the scanner.
+    share_target: {
+      action: "/share-target",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: { files: [{ name: "receipt", accept: ["image/*"] }] },
+    },
     shortcuts: [
       { name: "New receipt", url: "/studio", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },
       { name: "History & warranties", url: "/history", icons: [{ src: "/icon-192.png", sizes: "192x192" }] },

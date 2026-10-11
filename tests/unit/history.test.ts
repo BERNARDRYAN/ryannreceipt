@@ -35,6 +35,9 @@ const cloud = (id: string, over: Partial<CloudSummary> = {}): CloudSummary => ({
   paymentMethod: "CARD",
   warrantyUntil: "",
   isPinned: false,
+  wallet: "",
+  tags: [],
+  taxRelief: "",
   updatedAt: "2026-10-05T10:00:00Z",
   ...over,
 });

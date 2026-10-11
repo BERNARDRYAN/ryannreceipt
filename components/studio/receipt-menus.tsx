@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Clock, Copy, FilePlus2, LayoutTemplate, Plus } from "lucide-react";
+import { Camera, ChevronDown, Clock, Copy, FilePlus2, LayoutTemplate, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { menuItemClass, menuLabelClass, useAnchoredPopover } from "@/components/ui/use-anchored-popover";
@@ -8,6 +8,7 @@ import { useT } from "@/lib/i18n/messages";
 import { useEditorStore } from "@/lib/store/editor-store";
 import { useReceiptStore } from "@/lib/store/receipt-store";
 import { toast } from "@/lib/store/toast-store";
+import { useUiStore } from "@/lib/store/ui-store";
 import { computeTotals, formatAmount } from "@/lib/utils/currency";
 
 /** "New ▾": blank receipt (undoable), from a template, or duplicate the open one. */
@@ -51,6 +52,10 @@ export function NewMenu({ onNew }: { onNew: () => void }) {
         <button type="button" className={menuItemClass} onClick={run(() => setTemplatesOpen(true))}>
           <LayoutTemplate className="size-4" aria-hidden />
           {t("studio.newFromTemplate")}
+        </button>
+        <button type="button" className={menuItemClass} onClick={run(() => useUiStore.getState().openScan())}>
+          <Camera className="size-4" aria-hidden />
+          {t("scan.title")}
         </button>
         <div className="my-1 border-t border-border" />
         <button type="button" className={menuItemClass} onClick={run(duplicate)}>

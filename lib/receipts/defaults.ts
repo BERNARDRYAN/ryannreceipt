@@ -54,6 +54,10 @@ export function createBlankDraft(serial: string = newSerial()): ReceiptDraft {
     barcodeData: `RR${serial}`,
     qrData: "",
     warrantyUntil: "",
+    wallet: "",
+    tags: [],
+    taxRelief: "",
+    hasPhoto: false,
     items: [{ id: newId(), name: "", qty: 1, price: 0 }],
     styleConfig: DEFAULT_STYLE,
   };

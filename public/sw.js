@@ -1,6 +1,8 @@
 /* RyannReceipt service worker: offline studio & history (local-first). */
 
-const VERSION = "rr-v1";
+const VERSION = "rr-v2";
+const SHARE_CACHE = "rr-share";
+const SHARED_FILE_PATH = "/__shared-receipt";
 const PAGES = `${VERSION}-pages`;
 const ASSETS = `${VERSION}-assets`;
 const APP_SHELL = ["/", "/studio", "/history"];
@@ -18,15 +20,38 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => !k.startsWith(VERSION)).map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(keys.filter((k) => !k.startsWith(VERSION) && k !== SHARE_CACHE).map((k) => caches.delete(k))),
+      )
       .then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return;
   const url = new URL(request.url);
+
+  // Web Share Target: stash the shared photo and open the scanner.
+  if (request.method === "POST" && url.origin === self.location.origin && url.pathname === "/share-target") {
+    event.respondWith(
+      (async () => {
+        try {
+          const form = await request.formData();
+          const file = form.get("receipt");
+          if (file && typeof file !== "string" && file.size <= 15 * 1024 * 1024) {
+            const cache = await caches.open(SHARE_CACHE);
+            await cache.put(SHARED_FILE_PATH, new Response(file, { headers: { "Content-Type": file.type } }));
+          }
+        } catch {
+          // Fall through to the scanner with no file.
+        }
+        return Response.redirect("/studio?scan=shared", 303);
+      })(),
+    );
+    return;
+  }
+
+  if (request.method !== "GET") return;
 
   // Only same-origin; never cache the BFF (private data, auth) or Google sign-in.
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;

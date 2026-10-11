@@ -11,12 +11,15 @@ const BATCH_SIZE = 10;
 type SyncState = {
   saving: boolean;
   error: string | null;
-  set: (patch: Partial<Pick<SyncState, "saving" | "error">>) => void;
+  /** Synced settings were compared with the cloud this session (or that failed). */
+  settingsChecked: boolean;
+  set: (patch: Partial<Pick<SyncState, "saving" | "error" | "settingsChecked">>) => void;
 };
 
 export const useSyncState = create<SyncState>()((set) => ({
   saving: false,
   error: null,
+  settingsChecked: false,
   set: (patch) => set(patch),
 }));
 
@@ -72,6 +75,9 @@ export type CloudSummary = {
   paymentMethod: string;
   warrantyUntil: string;
   isPinned: boolean;
+  wallet: string;
+  tags: string[];
+  taxRelief: ReceiptDraft["taxRelief"];
   updatedAt: string;
 };
 

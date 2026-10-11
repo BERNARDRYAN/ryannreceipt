@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Field,
@@ -16,6 +16,9 @@ import {
 import { LogoField } from "@/components/receipt/editor/logo-field";
 import { LookPicker } from "@/components/receipt/editor/look-picker";
 import { PresetsDialog } from "@/components/receipt/editor/presets-dialog";
+import { MerchantInput, PhotoField, TagsInput } from "@/components/receipt/editor/smart-fields";
+import { usedValues } from "@/lib/memory/merchants";
+import { COMMON_WALLETS } from "@/lib/quick-add/keywords";
 import { useT, type MessageKey } from "@/lib/i18n/messages";
 import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
 import { computeTotals, currencyDecimals, formatAmount } from "@/lib/utils/currency";
@@ -25,6 +28,7 @@ import {
   ORDER_TYPES,
   PAYMENT_METHODS,
   TAX_LABELS,
+  TAX_RELIEFS,
   type ReceiptStyle,
 } from "@/lib/validators/receipt-schema";
 
@@ -64,17 +68,8 @@ export function ShopStep() {
           </button>
         }
       >
-        <Field label={t("field.storeName")} fieldId="merchantName">
-          {(id) => (
-            <input
-              id={id}
-              className={inputClass}
-              maxLength={60}
-              placeholder={t("field.storeNamePh")}
-              value={draft.merchantName}
-              onChange={(e) => setField("merchantName", e.target.value)}
-            />
-          )}
+        <Field label={t("field.storeName")} fieldId="merchantName" hint={t("memory.hint")}>
+          {() => <MerchantInput value={draft.merchantName} onChange={(v) => setField("merchantName", v)} />}
         </Field>
         <Field label={t("field.address")} fieldId="merchantAddress">
           {(id) => (
@@ -216,9 +211,23 @@ function SummaryRow({ label, value, strong }: { label: string; value: string; st
   );
 }
 
+/** Wallets and tags used before, for suggestions. */
+function useUsedValues() {
+  const receipts = useReceiptStore((s) => s.receipts);
+  return useMemo(() => {
+    const used = usedValues(Object.values(receipts));
+    return {
+      wallets: [...new Set([...used.wallets, ...COMMON_WALLETS])],
+      tags: used.tags.filter((tag) => tag !== "recurring" && tag !== "scanned"),
+    };
+  }, [receipts]);
+}
+
 export function PaymentStep() {
   const t = useT();
   const { draft, setField } = useEditing();
+  const activeId = useReceiptStore((s) => s.activeId);
+  const used = useUsedValues();
   if (!draft) return null;
 
   const totals = computeTotals(draft);
@@ -242,6 +251,26 @@ export function PaymentStep() {
                 <option key={p}>{p}</option>
               ))}
             </select>
+          )}
+        </Field>
+        <Field label={t("field.wallet")} hint={t("hint.wallet")} fieldId="wallet">
+          {(id) => (
+            <>
+              <input
+                id={id}
+                list="wallet-suggestions"
+                className={inputClass}
+                maxLength={30}
+                placeholder={t("field.walletPh")}
+                value={draft.wallet}
+                onChange={(e) => setField("wallet", e.target.value)}
+              />
+              <datalist id="wallet-suggestions">
+                {used.wallets.map((w) => (
+                  <option key={w} value={w} />
+                ))}
+              </datalist>
+            </>
           )}
         </Field>
         {isCash && (
@@ -387,6 +416,31 @@ export function PaymentStep() {
               />
             )}
           </Field>
+          <Field label={t("field.tags")} hint={t("hint.tags")} className="col-span-2" fieldId="tags">
+            {(id) => (
+              <TagsInput id={id} value={draft.tags} onChange={(tags) => setField("tags", tags)} suggestions={used.tags} />
+            )}
+          </Field>
+          <Field label={t("field.taxRelief")} info={t("hint.taxRelief")} className="col-span-2" fieldId="taxRelief">
+            {(id) => (
+              <select
+                id={id}
+                className={inputClass}
+                value={draft.taxRelief}
+                onChange={(e) => setField("taxRelief", e.target.value as (typeof TAX_RELIEFS)[number])}
+              >
+                {TAX_RELIEFS.map((r) => (
+                  <option key={r} value={r}>
+                    {t(`relief.${r || "none"}` as MessageKey)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        </div>
+        <div className="space-y-1.5">
+          <span className="block text-xs font-medium text-muted">{t("photo.label")}</span>
+          <PhotoField receiptId={activeId} hasPhoto={draft.hasPhoto} onChange={(has) => setField("hasPhoto", has)} />
         </div>
       </Group>
     </div>

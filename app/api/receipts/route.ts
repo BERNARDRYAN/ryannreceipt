@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
       paymentMethod: r.payment_method,
       warrantyUntil: r.warranty_until ?? "",
       isPinned: r.is_pinned,
+      wallet: typeof r.meta?.wallet === "string" ? r.meta.wallet : "",
+      tags: Array.isArray(r.meta?.tags) ? r.meta.tags : [],
+      taxRelief: r.meta?.taxRelief ?? "",
       updatedAt: r.updated_at,
     })),
   });

@@ -13,7 +13,7 @@ import { toast } from "@/lib/store/toast-store";
 import { formatAmount } from "@/lib/utils/currency";
 import { CATEGORIES } from "@/lib/validators/receipt-schema";
 
-export type ListFilters = { query: string; category: string; month: string };
+export type ListFilters = { query: string; category: string; month: string; day: string; wallet: string; tag: string };
 
 function formatDate(value: string) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
@@ -134,12 +134,17 @@ export function ReceiptList({
     (e) =>
       (!filters.category || e.category === filters.category) &&
       (!filters.month || e.receiptDate.startsWith(filters.month)) &&
+      (!filters.day || e.receiptDate.startsWith(filters.day)) &&
+      (!filters.wallet || e.wallet === filters.wallet) &&
+      (!filters.tag || e.tags.includes(filters.tag)) &&
       (!q ||
         e.merchantName.toLowerCase().includes(q) ||
         e.receiptNo.toLowerCase().includes(q) ||
-        e.title.toLowerCase().includes(q)),
+        e.title.toLowerCase().includes(q) ||
+        e.wallet.toLowerCase().includes(q) ||
+        e.tags.some((tag) => tag.includes(q.replace(/^#/, "")))),
   );
-  const hasFilters = !!(filters.query || filters.category || filters.month);
+  const hasFilters = !!(filters.query || filters.category || filters.month || filters.day || filters.wallet || filters.tag);
 
   function exportCsv() {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -180,15 +185,25 @@ export function ReceiptList({
               ))}
             </select>
           </label>
-          {filters.month && (
-            <button
-              type="button"
-              onClick={() => onFiltersChange({ ...filters, month: "" })}
-              className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium"
-            >
-              {ml(filters.month, true)}
-              <X className="size-3" aria-label={t("list.clearMonth")} />
-            </button>
+          {(
+            [
+              ["month", filters.month && ml(filters.month, true)],
+              ["day", filters.day],
+              ["wallet", filters.wallet],
+              ["tag", filters.tag && `#${filters.tag}`],
+            ] as const
+          ).map(([key, label]) =>
+            label ? (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onFiltersChange({ ...filters, [key]: "" })}
+                className="inline-flex items-center gap-1 rounded-full bg-surface-muted px-2.5 py-1 text-xs font-medium"
+              >
+                {label}
+                <X className="size-3" aria-label={t("list.clearFilter")} />
+              </button>
+            ) : null,
           )}
           <button
             type="button"
@@ -208,7 +223,7 @@ export function ReceiptList({
           {hasFilters ? (
             <button
               type="button"
-              onClick={() => onFiltersChange({ query: "", category: "", month: "" })}
+              onClick={() => onFiltersChange({ query: "", category: "", month: "", day: "", wallet: "", tag: "" })}
               className="mt-2 text-sm font-medium underline-offset-2 hover:underline"
             >
               {t("list.clearFilters")}
@@ -239,6 +254,13 @@ export function ReceiptList({
                     <span className="font-mono">{e.receiptNo}</span>
                     <span aria-hidden>·</span>
                     <span>{t(`cat.${e.category}` as MessageKey)}</span>
+                    {e.wallet && <span>{e.wallet}</span>}
+                    {e.tags
+                      .filter((tag) => tag !== "recurring")
+                      .slice(0, 3)
+                      .map((tag) => (
+                        <span key={tag}>#{tag}</span>
+                      ))}
                     {e.warrantyUntil && (
                       <span className="inline-flex items-center gap-0.5">
                         <ShieldCheck className="size-3" aria-hidden />

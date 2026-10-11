@@ -2,7 +2,7 @@ import type { LocalReceipt } from "@/lib/store/receipt-store";
 import { isDirty } from "@/lib/store/receipt-store";
 import type { CloudSummary } from "@/lib/sync/cloud";
 import { computeTotals } from "@/lib/utils/currency";
-import type { Category, Currency } from "@/lib/validators/receipt-schema";
+import type { Category, Currency, TaxRelief } from "@/lib/validators/receipt-schema";
 
 /** One row in History, whether it lives on this device, in the cloud, or both. */
 export type HistoryEntry = {
@@ -17,6 +17,10 @@ export type HistoryEntry = {
   category: Category;
   warrantyUntil: string;
   isPinned: boolean;
+  paymentMethod: string;
+  wallet: string;
+  tags: string[];
+  taxRelief: TaxRelief;
   /** False when the latest version exists only on this device. */
   synced: boolean;
   local: boolean;
@@ -35,6 +39,10 @@ export function fromLocal(r: LocalReceipt): HistoryEntry {
     category: d.category,
     warrantyUntil: d.warrantyUntil,
     isPinned: r.isPinned,
+    paymentMethod: d.paymentMethod,
+    wallet: d.wallet,
+    tags: d.tags,
+    taxRelief: d.taxRelief,
     synced: !isDirty(r),
     local: true,
   };
