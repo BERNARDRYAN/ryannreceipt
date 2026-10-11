@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { PREFS_KEY } from "@/lib/store/prefs-store";
-import type { Category, Currency, RecurringRule, UserSettings } from "@/lib/validators/receipt-schema";
+import type { Category, Currency, Income, RecurringRule, UserSettings } from "@/lib/validators/receipt-schema";
 
 const nowIso = () => new Date().toISOString();
 
@@ -20,6 +20,10 @@ type SettingsStore = UserSettings & {
   forgetFriend: (name: string) => void;
   setPayInfo: (info: UserSettings["payInfo"]) => void;
   setHomeCurrency: (currency: Currency) => void;
+  addIncome: (income: Income) => void;
+  removeIncome: (id: string) => void;
+  /** Stop a monthly income after the given month (YYYY-MM). */
+  endIncome: (id: string, lastMonth: string) => void;
   /** Adopt a newer copy from the cloud without bumping updatedAt. */
   replaceFromCloud: (settings: UserSettings) => void;
 };
@@ -33,6 +37,7 @@ export const EMPTY_SETTINGS: UserSettings = {
   friends: [],
   payInfo: EMPTY_PAY_INFO,
   homeCurrency: "MYR",
+  income: [],
   updatedAt: "1970-01-01T00:00:00.000Z",
 };
 
@@ -96,6 +101,10 @@ export const useSettingsStore = create<SettingsStore>()(
         })),
       setPayInfo: (payInfo) => set({ payInfo, updatedAt: nowIso() }),
       setHomeCurrency: (homeCurrency) => set({ homeCurrency, updatedAt: nowIso() }),
+      addIncome: (income) => set((s) => ({ income: [income, ...s.income].slice(0, 300), updatedAt: nowIso() })),
+      removeIncome: (id) => set((s) => ({ income: s.income.filter((i) => i.id !== id), updatedAt: nowIso() })),
+      endIncome: (id, lastMonth) =>
+        set((s) => ({ income: s.income.map((i) => (i.id === id ? { ...i, until: lastMonth } : i)), updatedAt: nowIso() })),
       // Older settings documents lack newer fields; fill them from defaults.
       replaceFromCloud: (settings) => set({ ...EMPTY_SETTINGS, ...settings }),
     }),
@@ -103,13 +112,14 @@ export const useSettingsStore = create<SettingsStore>()(
       name: "ryannreceipt:settings",
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, updatedAt }) => ({
+      partialize: ({ budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, income, updatedAt }) => ({
         budgets,
         categoryBudgets,
         recurring,
         friends,
         payInfo,
         homeCurrency,
+        income,
         updatedAt,
       }),
       merge: (persisted, current) =>
@@ -135,6 +145,6 @@ export function useSettingsHydrated() {
 
 /** The settings document as stored/synced (no actions). */
 export function settingsSnapshot(): UserSettings {
-  const { budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, updatedAt } = useSettingsStore.getState();
-  return { budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, updatedAt };
+  const { budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, income, updatedAt } = useSettingsStore.getState();
+  return { budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, income, updatedAt };
 }

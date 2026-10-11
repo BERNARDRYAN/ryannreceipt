@@ -251,3 +251,24 @@ test("a bill paid two months in a row is offered as recurring", async ({ page })
   await expect(page.getByText("Unifi looks like a monthly bill")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Recurring" })).toBeVisible();
 });
+
+test("income shows what's left to spend this month", async ({ page }) => {
+  await page.goto("/history");
+  await page.getByRole("button", { name: /^Income/ }).click();
+  const sheet = page.getByRole("dialog", { name: "Add income" });
+  await expect(sheet.getByRole("tab", { name: "Income" })).toHaveAttribute("aria-selected", "true");
+  await sheet.getByLabel("Amount", { exact: true }).fill("4000");
+  await sheet.getByPlaceholder(/Salary/).fill("Salary");
+  await expect(sheet.getByRole("radio", { name: "Every month" })).toHaveAttribute("aria-checked", "true");
+  await sheet.getByRole("button", { name: "Add MYR 4,000.00" }).click();
+  await expect(page.getByText("MYR 4,000.00 will count every month")).toBeVisible();
+
+  // The sample receipt (MYR 26.80) is this month's only spending.
+  await expect(page.getByText(/^Left to spend in/)).toBeVisible();
+  await expect(page.getByText("MYR 3,973.20")).toBeVisible();
+  await expect(page.getByText(/Income MYR 4,000\.00 · 99% kept/)).toBeVisible();
+
+  // Monthly income started this month can be removed outright.
+  await page.getByRole("button", { name: "Remove Salary" }).click();
+  await expect(page.getByText(/^Left to spend in/)).toHaveCount(0);
+});

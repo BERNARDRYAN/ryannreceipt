@@ -175,6 +175,18 @@ export const payInfoSchema = z.strictObject({
 });
 
 /** Per-user settings synced across devices when signed in. */
+/** Money in: a one-off (bonus, refund) or a monthly amount (salary) from its date on. */
+export const incomeSchema = z.strictObject({
+  id: z.uuid(),
+  name: text(40).min(1),
+  amount: money.positive(),
+  currency: z.enum(CURRENCIES),
+  date: z.iso.date(),
+  monthly: z.boolean(),
+  /** Last month (YYYY-MM) a monthly income still counts; "" = ongoing. */
+  until: z.union([z.string().regex(/^\d{4}-\d{2}$/), z.literal("")]),
+});
+
 export const userSettingsSchema = z.strictObject({
   budgets: budgetMap,
   categoryBudgets: z.partialRecord(z.enum(CURRENCIES), z.partialRecord(z.enum(CATEGORIES), money)),
@@ -184,11 +196,14 @@ export const userSettingsSchema = z.strictObject({
   payInfo: payInfoSchema,
   /** Currency History totals are shown in (others are converted). */
   homeCurrency: z.enum(CURRENCIES),
+  /** Added later: older saved settings (and backups) don't have it. */
+  income: z.array(incomeSchema).max(300).default([]),
   updatedAt: z.iso.datetime(),
 });
 
 export type ReceiptLineItem = z.infer<typeof receiptLineItemSchema>;
 export type RecurringRule = z.infer<typeof recurringRuleSchema>;
+export type Income = z.infer<typeof incomeSchema>;
 export type Split = z.infer<typeof splitSchema>;
 export type PayInfo = z.infer<typeof payInfoSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;

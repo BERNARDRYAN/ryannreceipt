@@ -28,7 +28,7 @@ test("receipts made in the studio appear in History with summaries", async ({ pa
 test("a monthly budget shows progress on the spend tile", async ({ page }) => {
   await page.goto("/studio");
   await page.goto("/history");
-  await page.getByRole("button", { name: "Set a monthly budget" }).click();
+  await page.getByRole("button", { name: "Set budget" }).click();
   await page.getByLabel(/^Budget/).fill("1000");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("meter")).toBeVisible();

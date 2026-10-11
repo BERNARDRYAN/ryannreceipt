@@ -56,6 +56,12 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **Add expense** (Alt+Q, or the **+** on phones): amount first, then what it was for (it still
   understands a whole note like `nasi lemak 12.90 tng yesterday #work`), categories you use most
   first, and payment / wallet / date under "Paid with".
+- **Tap an expense** to edit it in the same simple sheet (amount, what for, category, paid with), with
+  Split, Delete and "Open as receipt"; itemised receipts keep their amount.
+- **Income**: the add sheet has Expense | Income. Monthly income (salary) counts every month until
+  stopped; Home then shows **Left to spend** and the share kept.
+- **Repeating bills**: a shop paid once a month two months running is offered as a recurring expense.
+- **First visit**: a 2-step setup (currency, optional budget) clears the demo receipt.
 - **Receipt maker** (`/studio`): each step shows only the essentials; everything else is under
   "More options". Any expense opens here to become a printed-style receipt.
 - **Templates**: first visit opens a gallery (Kopitiam, Grocery, Electronics, Ride, Hawker, Blank); later via **New ▾**.

@@ -469,13 +469,140 @@ function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: Edi
   );
 }
 
+/** Money in: salary (every month) or a one-off like a bonus or refund. */
+function IncomeForm({ onDone }: { onDone: () => void }) {
+  const t = useT();
+  const homeCurrency = useSettingsStore((s) => s.homeCurrency);
+  const [today] = useState(todayKey);
+  const [amountText, setAmountText] = useState("");
+  const [currency, setCurrency] = useState<Currency>(homeCurrency);
+  const [name, setName] = useState("");
+  const [date, setDate] = useState(today);
+  const [monthlyChoice, setMonthlyChoice] = useState<boolean | null>(null);
+  // Salary-like names default to "every month" until the user decides.
+  const monthly = monthlyChoice ?? /salary|gaji|pay|wage|薪|工资/i.test(name);
+  const amount = parseAmountText(amountText);
+  const canSave = amount > 0 && !!name.trim();
+
+  function save() {
+    if (!canSave) return;
+    useSettingsStore.getState().addIncome({
+      id: crypto.randomUUID(),
+      name: name.trim().slice(0, 40),
+      amount,
+      currency,
+      date,
+      monthly,
+      until: "",
+    });
+    navigator.vibrate?.(10);
+    toast(t(monthly ? "income.addedMonthly" : "income.added", { amount: `${currency} ${formatAmount(amount, currency)}` }), {
+      tone: "success",
+    });
+    onDone();
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+      className="space-y-4"
+    >
+      <div className="flex items-center justify-center gap-2 rounded-2xl bg-success/10 px-4 py-3">
+        <select
+          aria-label={t("field.currency")}
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value as Currency)}
+          className="rounded-md border-0 bg-transparent p-1 text-sm font-semibold text-muted"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+        <input
+          autoFocus
+          aria-label={t("quick.amountLabel")}
+          inputMode="decimal"
+          placeholder="0.00"
+          value={amountText}
+          onChange={(e) => setAmountText(e.target.value.replace(/[^\d.,]/g, "").slice(0, 12))}
+          className="w-full min-w-0 bg-transparent text-center text-4xl font-semibold tracking-tight tabular-nums outline-none placeholder:text-muted/40"
+        />
+      </div>
+      <label className="block space-y-1.5">
+        <span className="block text-xs font-medium text-muted">{t("income.from")}</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("income.fromPh")}
+          maxLength={40}
+          className={`${inputClass} py-2.5 text-base`}
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="space-y-1.5">
+          <span className="block text-xs font-medium text-muted">{t("quick.date")}</span>
+          <input type="date" className={inputClass} value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+        </label>
+        <div className="space-y-1.5">
+          <span className="block text-xs font-medium text-muted">{t("income.repeat")}</span>
+          <div role="radiogroup" aria-label={t("income.repeat")} className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1">
+            {([true, false] as const).map((v) => (
+              <button
+                key={String(v)}
+                type="button"
+                role="radio"
+                aria-checked={monthly === v}
+                onClick={() => setMonthlyChoice(v)}
+                className={`rounded-md py-1.5 text-xs font-medium ${monthly === v ? "bg-surface shadow-sm" : "text-muted"}`}
+              >
+                {v ? t("income.monthly") : t("income.once")}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <button type="submit" disabled={!canSave} className={`${buttonStyles.primary} h-12 w-full rounded-xl text-base`}>
+        {canSave ? t("income.add", { amount: `${currency} ${formatAmount(amount, currency)}` }) : t("income.addPlain")}
+      </button>
+    </form>
+  );
+}
+
 export function QuickAddDialog() {
   const t = useT();
   const open = useUiStore((s) => s.quickAddOpen);
   const setOpen = useUiStore((s) => s.setQuickAddOpen);
+  const initialMode = useUiStore((s) => s.quickAddMode);
+  const [modeChoice, setMode] = useState<"expense" | "income" | null>(null);
+  const mode = modeChoice ?? initialMode;
+  const close = () => {
+    setOpen(false);
+    setMode(null);
+  };
   return (
-    <Dialog open={open} onClose={() => setOpen(false)} title={t("quick.title")} sheet>
-      {open && <QuickAddForm onDone={() => setOpen(false)} />}
+    <Dialog open={open} onClose={close} title={mode === "income" ? t("income.title") : t("quick.title")} sheet>
+      {open && (
+        <div className="space-y-4">
+          <div role="tablist" aria-label={t("income.kind")} className="grid grid-cols-2 gap-1 rounded-xl bg-surface-muted p-1">
+            {(["expense", "income"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => setMode(m)}
+                className={`rounded-lg py-1.5 text-sm font-medium ${mode === m ? "bg-surface shadow-sm" : "text-muted"}`}
+              >
+                {m === "expense" ? t("income.tabExpense") : t("income.tabIncome")}
+              </button>
+            ))}
+          </div>
+          {mode === "expense" ? <QuickAddForm onDone={close} /> : <IncomeForm onDone={close} />}
+        </div>
+      )}
     </Dialog>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ChevronDown, Flame, X, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
+import { Camera, ChevronDown, Flame, Wallet, X, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -10,6 +10,7 @@ import { Breakdown, type BreakdownMode } from "@/components/history/breakdown";
 import { BudgetsDialog } from "@/components/history/budgets-dialog";
 import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
+import { IncomeCard } from "@/components/history/income-card";
 import { MoreTools, type Tool } from "@/components/history/more-tools";
 import { RepeatSuggestions } from "@/components/history/repeat-suggestions";
 import { WelcomeSetup } from "@/components/history/welcome-setup";
@@ -36,6 +37,7 @@ import {
 import { translate, useT, type MessageKey } from "@/lib/i18n/messages";
 import { convert, useFxRates } from "@/lib/fx/rates";
 import { pickInsight, type Insight } from "@/lib/history/insights";
+import { incomeTotal, leftToSpend } from "@/lib/income";
 import { downloadMonthlyReport } from "@/lib/reports/pdf";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useSettingsHydrated, useSettingsStore } from "@/lib/store/settings-store";
@@ -296,7 +298,8 @@ export function HistoryClient() {
   // Travel mode: everything is shown in the home currency; foreign receipts
   // are converted at today's ECB reference rate (only if any exist).
   const currency = homeCurrency;
-  const hasForeign = !!entries?.some((e) => e.currency !== currency);
+  const incomeList = useSettingsStore((s) => s.income);
+  const hasForeign = !!entries?.some((e) => e.currency !== currency) || incomeList.some((i) => i.currency !== currency);
   const fx = useFxRates(hasForeign);
   const inCurrency = (entries ?? []).flatMap((e) => {
     if (e.currency === currency) return [e];
@@ -316,6 +319,9 @@ export function HistoryClient() {
     count: countsByMonth.get(key) ?? 0,
   }));
   const selTotal = totalsByMonth.get(selectedMonth) ?? 0;
+  // Income for the month shown, and what's left of it after spending.
+  const monthIncome = incomeTotal(incomeList, selectedMonth, currency, fx);
+  const left = leftToSpend(monthIncome, selTotal);
   const prevKey = selectedMonth ? lastMonths(selectedMonth, 2)[0] : "";
   const prevTotal = totalsByMonth.get(prevKey) ?? 0;
 
@@ -367,6 +373,7 @@ export function HistoryClient() {
     warranty: !!entries?.some((e) => e.warrantyUntil),
     recurring: recurringRules.length > 0,
     tax: inCurrency.some((e) => e.taxRelief && e.receiptDate.startsWith(year)),
+    income: incomeList.length > 0,
   };
   const show = (key: string) => hasData[key] || openedTools.has(key);
   const openTool = (key: string) => setOpenedTools((prev) => new Set(prev).add(key));
@@ -408,6 +415,13 @@ export function HistoryClient() {
       { key: "warranty", icon: ShieldCheck, title: t("warranty.title"), sub: t("warranty.sub"), onOpen: () => openTool("warranty") },
       { key: "recurring", icon: Repeat, title: t("recurring.title"), sub: t("recurring.sub"), onOpen: () => openTool("recurring") },
       { key: "tax", icon: Landmark, title: t("relief.title", { year }), sub: t("relief.sub"), onOpen: () => openTool("tax") },
+      {
+        key: "income",
+        icon: Wallet,
+        title: t("income.toolTitle"),
+        sub: t("income.toolSub"),
+        onOpen: () => useUiStore.getState().setQuickAddOpen(true, "income"),
+      },
     ] satisfies Tool[]
   ).filter((tool) => !show(tool.key));
 
@@ -571,9 +585,33 @@ export function HistoryClient() {
           </div>
         ) : (
           <>
-            <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${activeWarranties > 0 ? "sm:grid-cols-3" : ""}`}>
+            <div
+              className={`grid grid-cols-2 gap-3 sm:gap-4 ${
+                ["", "", "", "sm:grid-cols-3", "sm:grid-cols-4"][2 + Number(!!left) + Number(activeWarranties > 0)]
+              }`}
+            >
+              {left && (
+                <StatTile
+                  className="col-span-2 sm:col-span-1"
+                  label={t("income.leftIn", { month: ml(selectedMonth, true) })}
+                  value={
+                    left.left >= 0 ? (
+                      `${currency} ${formatAmount(left.left, currency)}`
+                    ) : (
+                      <span className="text-danger">
+                        {t("income.over", { amount: `${currency} ${formatAmount(-left.left, currency)}` })}
+                      </span>
+                    )
+                  }
+                  meter={Math.max(0, Math.min(100, (selTotal / monthIncome) * 100))}
+                  sub={t("income.leftSub", {
+                    income: `${currency} ${formatAmount(monthIncome, currency)}`,
+                    pct: left.savedPct,
+                  })}
+                />
+              )}
               <StatTile
-                className="col-span-2 sm:col-span-1"
+                className={left ? "" : "col-span-2 sm:col-span-1"}
                 label={t("tile.spentIn", { month: ml(selectedMonth, true) })}
                 value={`${currency} ${formatAmount(selTotal, currency)}`}
                 delta={
@@ -597,14 +635,14 @@ export function HistoryClient() {
                   <button
                     type="button"
                     onClick={() => setBudgetOpen(true)}
-                    className="-mt-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted ring-1 ring-border hover:bg-surface-muted hover:text-foreground"
+                    className="-mt-0.5 shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted ring-1 ring-border hover:bg-surface-muted hover:text-foreground"
                   >
                     {budget > 0 ? t("budget.edit") : t("budget.set")}
                   </button>
                 }
               />
               <StatTile
-                className={activeWarranties > 0 ? "" : "col-span-2 sm:col-span-1"}
+                className={activeWarranties > 0 || left ? "" : "col-span-2 sm:col-span-1"}
                 label={t("tile.today")}
                 value={`${currency} ${formatAmount(todayTotal, currency)}`}
                 sub={t("tile.todayCount", { count: todayCount, total: entries.length })}
@@ -657,6 +695,7 @@ export function HistoryClient() {
                 onOpen={(entry) => void openEdit(entry.id)}
               />
               <div className="space-y-4">
+                <IncomeCard month={selectedMonth} monthName={ml(selectedMonth, true)} />
                 {show("friends") &&
                   closable(
                     "friends",
