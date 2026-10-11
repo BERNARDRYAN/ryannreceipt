@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Courier_Prime, Doto, Geist, Instrument_Serif, Space_Mono } from "next/font/google";
 
+import { AppLock } from "@/components/lock/app-lock";
+import { LockSettingsDialog } from "@/components/lock/lock-settings-dialog";
 import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import { Toaster } from "@/components/ui/toaster";
 import { PrefsSync, themeBootScript } from "@/lib/store/prefs-store";
@@ -81,6 +83,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Toaster />
         <RegisterServiceWorker />
         <PrefsSync />
+        <LockSettingsDialog />
+        <AppLock />
       </body>
     </html>
   );

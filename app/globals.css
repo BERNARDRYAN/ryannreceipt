@@ -440,6 +440,27 @@ body {
   }
 }
 
+/* App lock: until unlocked, only the lock screen is visible (set by the boot
+ * script in <head>, so receipts never flash on screen). */
+html[data-locked] body > :not([data-app-lock]) {
+  visibility: hidden !important;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
 /* ---------------------------------------------------------------------------
  * <select>: themed dropdown where supported (Chromium 135+, `base-select`),
  * matching the app's menus. Other browsers keep their native OS menu.

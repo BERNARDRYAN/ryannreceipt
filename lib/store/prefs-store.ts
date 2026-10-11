@@ -9,6 +9,20 @@ import type { Currency } from "@/lib/validators/receipt-schema";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
+/** Device-only app lock (never synced). */
+export type LockPrefs = {
+  enabled: boolean;
+  salt: string;
+  hash: string;
+  pinLength: number;
+  /** WebAuthn credential id for fingerprint/face unlock ("" = off). */
+  biometricId: string;
+  /** Lock again after the app has been in the background this long. */
+  timeoutMin: number;
+};
+
+export const LOCK_OFF: LockPrefs = { enabled: false, salt: "", hash: "", pinLength: 4, biometricId: "", timeoutMin: 1 };
+
 export const PREFS_KEY = "ryannreceipt:prefs";
 
 type PrefsStore = {
@@ -23,6 +37,8 @@ type PrefsStore = {
   budgets: Partial<Record<Currency, number>>;
   /** Last sequential receipt number issued on this device. */
   lastSerial: number;
+  lock: LockPrefs;
+  setLock: (lock: LockPrefs) => void;
 
   setLocale: (locale: Locale) => void;
   setTheme: (theme: ThemeChoice) => void;
@@ -53,6 +69,8 @@ export const usePrefsStore = create<PrefsStore>()(
       signInBannerDismissed: false,
       budgets: {},
       lastSerial: 0,
+      lock: LOCK_OFF,
+      setLock: (lock) => set({ lock }),
 
       setLocale: (locale) => set({ locale }),
       setTheme: (theme) => set({ theme }),
@@ -77,7 +95,7 @@ export const usePrefsStore = create<PrefsStore>()(
       name: PREFS_KEY,
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial }) => ({
+      partialize: ({ locale, theme, guideDone, templatesSeen, signInBannerDismissed, budgets, lastSerial, lock }) => ({
         locale,
         theme,
         guideDone,
@@ -85,6 +103,7 @@ export const usePrefsStore = create<PrefsStore>()(
         signInBannerDismissed,
         budgets,
         lastSerial,
+        lock,
       }),
       // First visit: nothing stored yet, so adopt the browser language.
       merge: (persisted, current) =>
@@ -126,7 +145,11 @@ export function PrefsSync() {
   return null;
 }
 
-/** Runs before React to avoid a light/dark flash. Kept tiny and dependency-free. */
+/**
+ * Runs before React: applies the theme (no light/dark flash) and, if the app
+ * lock is on, hides the page until the lock screen takes over. Tiny and
+ * dependency-free on purpose.
+ */
 export const themeBootScript = `try{var p=JSON.parse(localStorage.getItem(${JSON.stringify(
   PREFS_KEY,
-)})||"{}");var t=p.state&&p.state.theme;if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+)})||"{}");var s=p.state||{};var t=s.theme;if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;if(s.lock&&s.lock.enabled&&sessionStorage.getItem("rr:unlocked")!=="1")document.documentElement.dataset.locked="1"}catch(e){}`;

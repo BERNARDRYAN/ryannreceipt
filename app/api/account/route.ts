@@ -4,7 +4,7 @@ import { dbError, json, requireUser } from "@/lib/api/guard";
 
 /**
  * Delete everything RyannReceipt stores for this user (receipts, presets,
- * settings, photos), then sign out.
+ * share links, settings, photos), then sign out.
  *
  * Deliberately does NOT delete the auth user: the Supabase project is shared
  * across the Ryann Suite, so removing `auth.users` would also wipe the person's
@@ -26,6 +26,9 @@ export async function DELETE(request: NextRequest) {
     .delete({ count: "exact" })
     .eq("user_id", ctx.user.id);
   if (presets.error) return dbError("delete account presets", presets.error);
+
+  const shares = await ctx.supabase.from("receipt_shares").delete().eq("user_id", ctx.user.id);
+  if (shares.error) return dbError("delete account shares", shares.error);
 
   const settings = await ctx.supabase.from("receipt_settings").delete().eq("user_id", ctx.user.id);
   if (settings.error) return dbError("delete account settings", settings.error);

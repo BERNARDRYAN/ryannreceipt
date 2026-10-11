@@ -1,12 +1,14 @@
 "use client";
 
-import { ChevronDown, Copy, Download, FileText, LoaderCircle, Printer, Share2 } from "lucide-react";
+import { ChevronDown, Copy, Download, FileText, Link2, LoaderCircle, Printer, Share2 } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore, type RefObject } from "react";
 
 import { menuItemClass, menuLabelClass, useAnchoredPopover } from "@/components/ui/use-anchored-popover";
 import { useT } from "@/lib/i18n/messages";
 import { exportActions, useEditorStore } from "@/lib/store/editor-store";
+import { useReceiptStore } from "@/lib/store/receipt-store";
 import { toast } from "@/lib/store/toast-store";
+import { useUiStore } from "@/lib/store/ui-store";
 import {
   canCopyImage,
   canShareFiles,
@@ -177,6 +179,18 @@ export function ExportBar({ targetRef, draft, disabled, primary = true, variant 
         <button type="button" className={menuItemClass} onClick={print}>
           <Printer className="size-4" aria-hidden />
           {t("export.print", { mm: paperMm })}
+        </button>
+        <div className="my-1 border-t border-border" />
+        <button
+          type="button"
+          className={menuItemClass}
+          onClick={() => {
+            close();
+            useUiStore.getState().setShareLinkReceiptId(useReceiptStore.getState().activeId);
+          }}
+        >
+          <Link2 className="size-4" aria-hidden />
+          {t("link.title")}
         </button>
       </div>
     </div>

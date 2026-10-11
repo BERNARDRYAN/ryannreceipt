@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
 import { QuickAddDialog } from "@/components/quick-add/quick-add-dialog";
+import { ShareLinkDialog } from "@/components/share/share-link-dialog";
 import { PayInfoDialog } from "@/components/split/pay-info-dialog";
 import { SplitDialog } from "@/components/split/split-dialog";
 import { useRecurringRunner } from "@/lib/recurring/use-recurring-runner";
@@ -72,6 +73,7 @@ export function GlobalFeatures() {
       <ScanDialog />
       <SplitDialog />
       <PayInfoDialog />
+      <ShareLinkDialog />
     </>
   );
 }

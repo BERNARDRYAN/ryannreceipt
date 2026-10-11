@@ -1,6 +1,6 @@
 "use client";
 
-import { CloudOff, Copy, FileDown, MoreHorizontal, Pin, PinOff, Search, ShieldCheck, Trash2, Users, X } from "lucide-react";
+import { CloudOff, Copy, FileDown, Link2, MoreHorizontal, Pin, PinOff, Search, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef } from "react";
 
@@ -10,6 +10,7 @@ import { downloadCsv, entriesToCsv } from "@/lib/history/csv";
 import type { HistoryEntry } from "@/lib/history/entries";
 import { useT, type MessageKey } from "@/lib/i18n/messages";
 import { toast } from "@/lib/store/toast-store";
+import { useUiStore } from "@/lib/store/ui-store";
 import { formatAmount } from "@/lib/utils/currency";
 import { CATEGORIES } from "@/lib/validators/receipt-schema";
 
@@ -101,6 +102,10 @@ function RowMenu({
         <button type="button" className={item} onClick={run(onSplit)}>
           <Users className="size-4" aria-hidden />
           {t("split.button")}
+        </button>
+        <button type="button" className={item} onClick={run(() => useUiStore.getState().setShareLinkReceiptId(entry.id))}>
+          <Link2 className="size-4" aria-hidden />
+          {t("link.title")}
         </button>
         <button type="button" className={item} onClick={run(onDuplicate)}>
           <Copy className="size-4" aria-hidden />
