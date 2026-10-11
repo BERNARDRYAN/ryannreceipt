@@ -1,4 +1,5 @@
 import { normalizeDraft } from "@/lib/receipts/defaults";
+import { myShareOf, splitSummary, type SplitSummary } from "@/lib/split/calc";
 import { computeTotals } from "@/lib/utils/currency";
 import type { Preset, PresetInput, ReceiptDraft } from "@/lib/validators/receipt-schema";
 
@@ -47,7 +48,15 @@ type ReceiptMeta = Pick<
   | "tags"
   | "taxRelief"
   | "hasPhoto"
-> & { serviceCharge: number; rounding: number; v: 1 };
+  | "split"
+> & {
+  serviceCharge: number;
+  rounding: number;
+  /** Derived for lists: my share of the bill and everyone's balance. */
+  myShare: number;
+  splitSummary: SplitSummary | null;
+  v: 1;
+}
 
 /** Lightweight columns for list/summary views (no items, no logo). */
 export const RECEIPT_SUMMARY_COLUMNS =
@@ -93,6 +102,9 @@ export function draftToRow(id: string, userId: string, isPinned: boolean, draft:
     tags: draft.tags,
     taxRelief: draft.taxRelief,
     hasPhoto: draft.hasPhoto,
+    split: draft.split,
+    myShare: myShareOf(draft),
+    splitSummary: splitSummary(draft),
     serviceCharge: t.serviceCharge,
     rounding: t.rounding,
     v: 1,
@@ -157,6 +169,7 @@ export function rowToRecord(row: ReceiptRow) {
     ...(meta.tags !== undefined && { tags: meta.tags }),
     ...(meta.taxRelief !== undefined && { taxRelief: meta.taxRelief }),
     ...(meta.hasPhoto !== undefined && { hasPhoto: meta.hasPhoto }),
+    ...(meta.split !== undefined && { split: meta.split }),
   });
   return { id: row.id, isPinned: row.is_pinned, draft, updatedAt: row.updated_at };
 }

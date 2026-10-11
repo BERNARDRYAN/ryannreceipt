@@ -40,6 +40,24 @@ export const MAX_LOGO_LENGTH = 120_000;
 const text = (max: number) => z.string().trim().max(max);
 const money = z.number().min(0).max(1_000_000_000);
 
+/** The person id used for "me" in a split bill. */
+export const ME = "me";
+
+const personId = z.string().min(1).max(40);
+
+/**
+ * Who was there, who paid, who had what, and who has paid back.
+ * `shares[itemId][personId]` is how many units of that line the person had;
+ * a line shared by three people has a share of 1 each.
+ */
+export const splitSchema = z.strictObject({
+  people: z.array(z.strictObject({ id: personId, name: z.string().trim().min(1).max(30) })).min(1).max(20),
+  payerId: personId,
+  shares: z.record(z.string().max(40), z.record(personId, z.number().int().min(0).max(9999))),
+  /** ISO time each person paid the payer back ("" = not yet). The payer never owes. */
+  paid: z.record(personId, z.union([z.iso.datetime(), z.literal("")])),
+});
+
 export const receiptLineItemSchema = z.strictObject({
   id: z.uuid(),
   name: text(80),
@@ -92,6 +110,8 @@ export const receiptDraftSchema = z.strictObject({
   taxRelief: z.enum(TAX_RELIEFS),
   /** A photo of the paper receipt is stored in the cloud for this receipt. */
   hasPhoto: z.boolean(),
+  /** Bill split between friends, or null. */
+  split: splitSchema.nullable(),
   items: z.array(receiptLineItemSchema).max(100),
   styleConfig: receiptStyleSchema,
 });
@@ -145,16 +165,32 @@ export const recurringRuleSchema = z.strictObject({
 
 const budgetMap = z.partialRecord(z.enum(CURRENCIES), money);
 
+/** How friends can pay you back; included in split-bill messages if set. */
+export const payInfoSchema = z.strictObject({
+  duitnow: text(40),
+  bank: text(40),
+  account: text(40),
+  name: text(60),
+  note: text(120),
+});
+
 /** Per-user settings synced across devices when signed in. */
 export const userSettingsSchema = z.strictObject({
   budgets: budgetMap,
   categoryBudgets: z.partialRecord(z.enum(CURRENCIES), z.partialRecord(z.enum(CATEGORIES), money)),
   recurring: z.array(recurringRuleSchema).max(50),
+  /** People you split bills with, for one-tap adding. */
+  friends: z.array(z.strictObject({ id: personId, name: z.string().trim().min(1).max(30) })).max(100),
+  payInfo: payInfoSchema,
+  /** Currency History totals are shown in (others are converted). */
+  homeCurrency: z.enum(CURRENCIES),
   updatedAt: z.iso.datetime(),
 });
 
 export type ReceiptLineItem = z.infer<typeof receiptLineItemSchema>;
 export type RecurringRule = z.infer<typeof recurringRuleSchema>;
+export type Split = z.infer<typeof splitSchema>;
+export type PayInfo = z.infer<typeof payInfoSchema>;
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 export type TaxRelief = (typeof TAX_RELIEFS)[number];
 export type ReceiptStyle = z.infer<typeof receiptStyleSchema>;

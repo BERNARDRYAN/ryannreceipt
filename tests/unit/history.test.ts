@@ -38,6 +38,8 @@ const cloud = (id: string, over: Partial<CloudSummary> = {}): CloudSummary => ({
   wallet: "",
   tags: [],
   taxRelief: "",
+  myShare: 10,
+  split: null,
   updatedAt: "2026-10-05T10:00:00Z",
   ...over,
 });

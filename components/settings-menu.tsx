@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, Keyboard, LayoutTemplate, Monitor, Moon, Settings2, Sparkles, Sun } from "lucide-react";
+import { Check, HandCoins, Keyboard, LayoutTemplate, Monitor, Moon, Settings2, Sparkles, Sun } from "lucide-react";
 
 import { menuItemClass, menuLabelClass, useAnchoredPopover } from "@/components/ui/use-anchored-popover";
 import { LOCALE_NAMES, LOCALES, useT } from "@/lib/i18n/messages";
 import { useEditorStore } from "@/lib/store/editor-store";
 import { usePrefsStore, type ThemeChoice } from "@/lib/store/prefs-store";
+import { useUiStore } from "@/lib/store/ui-store";
 
 const THEMES: { value: ThemeChoice; icon: typeof Sun; label: "theme.system" | "theme.light" | "theme.dark" }[] = [
   { value: "system", icon: Monitor, label: "theme.system" },
@@ -79,9 +80,13 @@ export function SettingsMenu({ studio = false }: { studio?: boolean }) {
             </button>
           ))}
         </div>
+        <div className="my-1 border-t border-border" />
+        <button type="button" className={menuItemClass} onClick={run(() => useUiStore.getState().setPayInfoOpen(true))}>
+          <HandCoins className="size-4" aria-hidden />
+          {t("pay.title")}
+        </button>
         {studio && (
           <>
-            <div className="my-1 border-t border-border" />
             <button type="button" className={menuItemClass} onClick={run(() => useEditorStore.getState().setTemplatesOpen(true))}>
               <LayoutTemplate className="size-4" aria-hidden />
               {t("settings.templates")}

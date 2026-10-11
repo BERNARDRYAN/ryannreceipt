@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
       wallet: typeof r.meta?.wallet === "string" ? r.meta.wallet : "",
       tags: Array.isArray(r.meta?.tags) ? r.meta.tags : [],
       taxRelief: r.meta?.taxRelief ?? "",
+      myShare: typeof r.meta?.myShare === "number" ? r.meta.myShare : Number(r.total),
+      split: r.meta?.splitSummary ?? null,
       updatedAt: r.updated_at,
     })),
   });

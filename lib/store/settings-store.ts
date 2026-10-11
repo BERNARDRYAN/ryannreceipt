@@ -15,14 +15,23 @@ type SettingsStore = UserSettings & {
   upsertRule: (rule: RecurringRule) => void;
   removeRule: (id: string) => void;
   markRuleRun: (id: string, date: string) => void;
+  /** Remember people from split bills (most recent first, deduped by name). */
+  rememberFriends: (people: { id: string; name: string }[]) => void;
+  setPayInfo: (info: UserSettings["payInfo"]) => void;
+  setHomeCurrency: (currency: Currency) => void;
   /** Adopt a newer copy from the cloud without bumping updatedAt. */
   replaceFromCloud: (settings: UserSettings) => void;
 };
+
+export const EMPTY_PAY_INFO = { duitnow: "", bank: "", account: "", name: "", note: "" };
 
 export const EMPTY_SETTINGS: UserSettings = {
   budgets: {},
   categoryBudgets: {},
   recurring: [],
+  friends: [],
+  payInfo: EMPTY_PAY_INFO,
+  homeCurrency: "MYR",
   updatedAt: "1970-01-01T00:00:00.000Z",
 };
 
@@ -71,16 +80,30 @@ export const useSettingsStore = create<SettingsStore>()(
           recurring: s.recurring.map((r) => (r.id === id ? { ...r, lastRun: date } : r)),
           updatedAt: nowIso(),
         })),
-      replaceFromCloud: (settings) => set({ ...settings }),
+      rememberFriends: (people) =>
+        set((s) => {
+          const incoming = people.filter((p) => p.id !== "me");
+          if (!incoming.length) return s;
+          const names = new Set(incoming.map((p) => p.name.toLowerCase()));
+          const friends = [...incoming, ...s.friends.filter((f) => !names.has(f.name.toLowerCase()))].slice(0, 100);
+          return { friends, updatedAt: nowIso() };
+        }),
+      setPayInfo: (payInfo) => set({ payInfo, updatedAt: nowIso() }),
+      setHomeCurrency: (homeCurrency) => set({ homeCurrency, updatedAt: nowIso() }),
+      // Older settings documents lack newer fields; fill them from defaults.
+      replaceFromCloud: (settings) => set({ ...EMPTY_SETTINGS, ...settings }),
     }),
     {
       name: "ryannreceipt:settings",
       version: 1,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ budgets, categoryBudgets, recurring, updatedAt }) => ({
+      partialize: ({ budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, updatedAt }) => ({
         budgets,
         categoryBudgets,
         recurring,
+        friends,
+        payInfo,
+        homeCurrency,
         updatedAt,
       }),
       merge: (persisted, current) =>
@@ -106,6 +129,6 @@ export function useSettingsHydrated() {
 
 /** The settings document as stored/synced (no actions). */
 export function settingsSnapshot(): UserSettings {
-  const { budgets, categoryBudgets, recurring, updatedAt } = useSettingsStore.getState();
-  return { budgets, categoryBudgets, recurring, updatedAt };
+  const { budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, updatedAt } = useSettingsStore.getState();
+  return { budgets, categoryBudgets, recurring, friends, payInfo, homeCurrency, updatedAt };
 }

@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect } from "react";
 
 import { QuickAddDialog } from "@/components/quick-add/quick-add-dialog";
+import { PayInfoDialog } from "@/components/split/pay-info-dialog";
+import { SplitDialog } from "@/components/split/split-dialog";
 import { useRecurringRunner } from "@/lib/recurring/use-recurring-runner";
 import { useLibraryHydrated } from "@/lib/store/receipt-store";
 import { useUiStore } from "@/lib/store/ui-store";
@@ -68,6 +70,8 @@ export function GlobalFeatures() {
     <>
       <QuickAddDialog />
       <ScanDialog />
+      <SplitDialog />
+      <PayInfoDialog />
     </>
   );
 }

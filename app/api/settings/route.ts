@@ -3,6 +3,13 @@ import type { NextRequest } from "next/server";
 import { dbError, json, parseJson, requireUser } from "@/lib/api/guard";
 import { userSettingsSchema } from "@/lib/validators/receipt-schema";
 
+// Defaults for fields added after a user's settings were first saved.
+const DEFAULTS = {
+  friends: [],
+  payInfo: { duitnow: "", bank: "", account: "", name: "", note: "" },
+  homeCurrency: "MYR",
+};
+
 /** The signed-in user's synced settings (budgets, recurring expenses), or null. */
 export async function GET(request: NextRequest) {
   const ctx = await requireUser(request, { limit: 120 });
@@ -16,7 +23,7 @@ export async function GET(request: NextRequest) {
   if (error) return dbError("get settings", error);
 
   // Anything stored before a schema change is dropped rather than trusted.
-  const parsed = data ? userSettingsSchema.safeParse(data.data) : null;
+  const parsed = data ? userSettingsSchema.safeParse({ ...DEFAULTS, ...(data.data as object) }) : null;
   return json({ settings: parsed?.success ? parsed.data : null });
 }
 

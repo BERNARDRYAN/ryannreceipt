@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, CalendarClock, CircleAlert, PiggyBank, ShieldAlert, Zap } from "lucide-react";
+import { Bell, CalendarClock, CircleAlert, HandCoins, PiggyBank, ShieldAlert, Zap } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 
@@ -59,7 +59,7 @@ export function RemindersBell() {
     if (budget) {
       const spent = entries
         .filter((e) => e.currency === currency && e.receiptDate.startsWith(today.slice(0, 7)))
-        .reduce((s, e) => s + e.total, 0);
+        .reduce((s, e) => s + e.spent, 0);
       const pct = Math.round((spent / budget) * 100);
       if (pct >= 80) {
         list.push({
@@ -83,6 +83,29 @@ export function RemindersBell() {
           icon: CalendarClock,
           tone: "text-muted",
           text: t("remind.recurring", { name: rule.name, amount: formatAmount(rule.amount, rule.currency) }),
+          href: "/history",
+        });
+      }
+    }
+
+    // Friends who haven't paid back for 3+ days.
+    const todayMs = Date.parse(`${today}T00:00:00Z`);
+    for (const e of entries) {
+      if (!e.split || e.split.payerId !== "me") continue;
+      const days = Math.floor((todayMs - Date.parse(`${e.receiptDate.slice(0, 10)}T00:00:00Z`)) / 86_400_000);
+      if (days < 3) continue;
+      for (const p of e.split.people) {
+        if (p.id === "me" || p.paid) continue;
+        list.push({
+          id: `o-${e.id}-${p.id}`,
+          icon: HandCoins,
+          tone: "text-warning",
+          text: t("remind.owed", {
+            name: p.name,
+            amount: `${e.currency} ${formatAmount(p.total, e.currency)}`,
+            shop: e.merchantName || t("list.untitled"),
+            n: days,
+          }),
           href: "/history",
         });
       }

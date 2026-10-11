@@ -20,7 +20,7 @@ export function TaxReliefCard({ entries, currency, year }: { entries: HistoryEnt
   const groups = new Map<string, { total: number; count: number }>();
   for (const e of inYear) {
     const g = groups.get(e.taxRelief) ?? { total: 0, count: 0 };
-    groups.set(e.taxRelief, { total: g.total + e.total, count: g.count + 1 });
+    groups.set(e.taxRelief, { total: g.total + e.spent, count: g.count + 1 });
   }
   const rows = [...groups.entries()].sort((a, b) => b[1].total - a[1].total);
   const relief = (k: string) => t(`relief.${k}` as MessageKey);

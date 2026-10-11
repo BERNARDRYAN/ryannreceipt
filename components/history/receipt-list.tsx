@@ -1,6 +1,6 @@
 "use client";
 
-import { CloudOff, Copy, FileDown, MoreHorizontal, Pin, PinOff, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { CloudOff, Copy, FileDown, MoreHorizontal, Pin, PinOff, Search, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef } from "react";
 
@@ -43,11 +43,13 @@ function RowMenu({
   onPin,
   onDuplicate,
   onDelete,
+  onSplit,
 }: {
   entry: HistoryEntry;
   onPin: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onSplit: () => void;
 }) {
   const t = useT();
   const id = useId();
@@ -96,6 +98,10 @@ function RowMenu({
           {entry.isPinned ? <PinOff className="size-4" aria-hidden /> : <Pin className="size-4" aria-hidden />}
           {entry.isPinned ? t("list.unpin") : t("list.pin")}
         </button>
+        <button type="button" className={item} onClick={run(onSplit)}>
+          <Users className="size-4" aria-hidden />
+          {t("split.button")}
+        </button>
         <button type="button" className={item} onClick={run(onDuplicate)}>
           <Copy className="size-4" aria-hidden />
           {t("list.duplicate")}
@@ -116,6 +122,7 @@ export function ReceiptList({
   onPin,
   onDuplicate,
   onDelete,
+  onSplit,
   showSyncState,
 }: {
   entries: HistoryEntry[];
@@ -126,6 +133,7 @@ export function ReceiptList({
   onPin: (entry: HistoryEntry) => void;
   onDuplicate: (entry: HistoryEntry) => void;
   onDelete: (entry: HistoryEntry) => void;
+  onSplit: (entry: HistoryEntry) => void;
 }) {
   const t = useT();
   const ml = useMonthLabel();
@@ -261,6 +269,15 @@ export function ReceiptList({
                       .map((tag) => (
                         <span key={tag}>#{tag}</span>
                       ))}
+                    {e.split && (
+                      <span className="inline-flex items-center gap-0.5">
+                        <Users className="size-3" aria-hidden />
+                        {t("split.badge", {
+                          count: e.split.people.length,
+                          unpaid: e.split.people.filter((p) => !p.paid).length,
+                        })}
+                      </span>
+                    )}
                     {e.warrantyUntil && (
                       <span className="inline-flex items-center gap-0.5">
                         <ShieldCheck className="size-3" aria-hidden />
@@ -275,8 +292,13 @@ export function ReceiptList({
                     )}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-semibold tabular-nums">
-                  <span className="text-xs font-normal text-muted">{e.currency}</span> {formatAmount(e.total, e.currency)}
+                <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                  <span className="text-xs font-normal text-muted">{e.currency}</span> {formatAmount(e.spent, e.currency)}
+                  {e.split && e.spent !== e.total && (
+                    <span className="block text-[11px] font-normal text-muted">
+                      {t("split.ofBill", { total: formatAmount(e.total, e.currency) })}
+                    </span>
+                  )}
                 </span>
               </Link>
               <RowMenu
@@ -284,6 +306,7 @@ export function ReceiptList({
                 onPin={() => onPin(e)}
                 onDuplicate={() => onDuplicate(e)}
                 onDelete={() => onDelete(e)}
+                onSplit={() => onSplit(e)}
               />
             </li>
           ))}

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 
 import { isDirty, useReceiptStore, type LocalReceipt } from "@/lib/store/receipt-store";
+import type { SplitSummary } from "@/lib/split/calc";
 import type { ReceiptDraft } from "@/lib/validators/receipt-schema";
 
 /** Small batches keep each request well under the BFF's body cap (logos are up to ~120 KB). */
@@ -78,6 +79,9 @@ export type CloudSummary = {
   wallet: string;
   tags: string[];
   taxRelief: ReceiptDraft["taxRelief"];
+  /** My share of the bill (the whole bill unless it was split). */
+  myShare: number;
+  split: SplitSummary | null;
   updatedAt: string;
 };
 

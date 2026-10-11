@@ -22,7 +22,7 @@ type Doc = InstanceType<typeof import("jspdf").jsPDF>;
 
 const sumBy = (entries: HistoryEntry[], key: (e: HistoryEntry) => string) => {
   const m = new Map<string, number>();
-  for (const e of entries) m.set(key(e), (m.get(key(e)) ?? 0) + e.total);
+  for (const e of entries) m.set(key(e), (m.get(key(e)) ?? 0) + e.spent);
   return [...m.entries()].sort((a, b) => b[1] - a[1]);
 };
 
@@ -61,7 +61,7 @@ async function buildReport(
   y += 7;
   line(labels.subtitle, 18, 11);
   y += 10;
-  const total = entries.reduce((s, e) => s + e.total, 0);
+  const total = entries.reduce((s, e) => s + e.spent, 0);
   row(labels.total, money(total), true);
   row(labels.receipts, String(entries.length));
   y += 4;
@@ -82,7 +82,7 @@ async function buildReport(
   line(labels.list, 18, 12, true);
   y += 7;
   for (const e of [...entries].sort((a, b) => a.receiptDate.localeCompare(b.receiptDate))) {
-    row(`  ${e.receiptDate.slice(0, 10)}  ${e.merchantName.slice(0, 34)}`, money(e.total));
+    row(`  ${e.receiptDate.slice(0, 10)}  ${e.merchantName.slice(0, 34)}`, money(e.spent));
   }
 
   y += 6;

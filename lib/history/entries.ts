@@ -1,3 +1,4 @@
+import { myShareOf, splitSummary, type SplitSummary } from "@/lib/split/calc";
 import type { LocalReceipt } from "@/lib/store/receipt-store";
 import { isDirty } from "@/lib/store/receipt-store";
 import type { CloudSummary } from "@/lib/sync/cloud";
@@ -13,7 +14,11 @@ export type HistoryEntry = {
   /** Wall-clock `YYYY-MM-DDTHH:mm`. */
   receiptDate: string;
   currency: Currency;
+  /** The whole bill. */
   total: number;
+  /** What I spent: my share if the bill was split, else the whole bill. */
+  spent: number;
+  split: SplitSummary | null;
   category: Category;
   warrantyUntil: string;
   isPinned: boolean;
@@ -36,6 +41,8 @@ export function fromLocal(r: LocalReceipt): HistoryEntry {
     receiptDate: d.receiptDate,
     currency: d.currency,
     total: computeTotals(d).payable,
+    spent: myShareOf(d),
+    split: splitSummary(d),
     category: d.category,
     warrantyUntil: d.warrantyUntil,
     isPinned: r.isPinned,
@@ -55,7 +62,10 @@ export function fromLocal(r: LocalReceipt): HistoryEntry {
 export function mergeEntries(cloud: CloudSummary[], local: LocalReceipt[]): HistoryEntry[] {
   const byId = new Map<string, HistoryEntry>();
   const localIds = new Set(local.map((r) => r.id));
-  for (const c of cloud) byId.set(c.id, { ...c, synced: true, local: localIds.has(c.id) });
+  for (const c of cloud) {
+    const { myShare, ...rest } = c;
+    byId.set(c.id, { ...rest, spent: myShare ?? c.total, split: c.split ?? null, synced: true, local: localIds.has(c.id) });
+  }
   for (const r of local) if (isDirty(r)) byId.set(r.id, fromLocal(r));
   return [...byId.values()];
 }

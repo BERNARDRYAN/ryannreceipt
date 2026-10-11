@@ -10,6 +10,7 @@ import { Breakdown, type BreakdownMode } from "@/components/history/breakdown";
 import { BudgetsDialog } from "@/components/history/budgets-dialog";
 import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
+import { FriendsCard } from "@/components/history/owed";
 import { ReceiptList, type ListFilters } from "@/components/history/receipt-list";
 import { RecurringCard } from "@/components/history/recurring";
 import { TaxReliefCard } from "@/components/history/tax-relief";
@@ -179,6 +180,36 @@ export function HistoryClient() {
     });
   }
 
+  /** Record that someone paid back their share of a split bill. */
+  async function markPaid(entryId: string, personId: string) {
+    try {
+      if (!useReceiptStore.getState().receipts[entryId]) await pullReceipt(entryId);
+      const receipt = useReceiptStore.getState().receipts[entryId];
+      const split = receipt?.draft.split;
+      if (!receipt || !split) return;
+      useReceiptStore.getState().patchDraft(entryId, {
+        split: { ...split, paid: { ...split.paid, [personId]: new Date().toISOString() } },
+      });
+      toast(t("owed.marked"), { tone: "success" });
+      if (signedIn) {
+        const updated = useReceiptStore.getState().receipts[entryId];
+        if (updated) await pushReceipts([updated]);
+      }
+    } catch {
+      toast(t("history.pinFailed"), { tone: "error" });
+    }
+  }
+
+  /** Split needs the full receipt locally; pull it first if it only lives in the cloud. */
+  async function openSplit(id: string) {
+    try {
+      if (!useReceiptStore.getState().receipts[id]) await pullReceipt(id);
+      useUiStore.getState().setSplitReceiptId(id);
+    } catch {
+      toast(t("studio.openFailed"), { tone: "error" });
+    }
+  }
+
   async function handleSync() {
     setSyncing(true);
     try {
@@ -203,7 +234,7 @@ export function HistoryClient() {
   const usedCurrencies = CURRENCIES.filter((c) => entries?.some((e) => e.currency === c));
 
   const months = currentMonth ? lastMonths(currentMonth, 6) : [];
-  const totalsByMonth = sumBy(inCurrency, (e) => monthKey(e.receiptDate), (e) => e.total);
+  const totalsByMonth = sumBy(inCurrency, (e) => monthKey(e.receiptDate), (e) => e.spent);
   const countsByMonth = sumBy(inCurrency, (e) => monthKey(e.receiptDate), () => 1);
   const monthData = months.map((key) => ({
     key,
@@ -224,11 +255,11 @@ export function HistoryClient() {
       : undefined;
 
   const inMonth = inCurrency.filter((e) => monthKey(e.receiptDate) === selectedMonth);
-  const dayTotals = sumBy(inCurrency, (e) => e.receiptDate.slice(0, 10), (e) => e.total);
+  const dayTotals = sumBy(inCurrency, (e) => e.receiptDate.slice(0, 10), (e) => e.spent);
   const todayTotal = dayTotals.get(today) ?? 0;
   const todayCount = inCurrency.filter((e) => e.receiptDate.startsWith(today)).length;
   const catBudgets = categoryBudgets[currency] ?? {};
-  const byCategory = [...sumBy(inMonth, (e) => e.category, (e) => e.total)]
+  const byCategory = [...sumBy(inMonth, (e) => e.category, (e) => e.spent)]
     .map(([key, total]) => ({ key, total, budget: catBudgets[key as keyof typeof catBudgets] }))
     .concat(
       // Budgeted categories with no spending yet still show their limit.
@@ -237,12 +268,12 @@ export function HistoryClient() {
         .map(([key, budget]) => ({ key, total: 0, budget })),
     )
     .sort((a, b) => b.total - a.total);
-  const byWallet = [...sumBy(inMonth, (e) => e.wallet, (e) => e.total)]
+  const byWallet = [...sumBy(inMonth, (e) => e.wallet, (e) => e.spent)]
     .map(([key, total]) => ({ key, total }))
     .sort((a, b) => b.total - a.total);
   const byTag = [
     ...sumBy(
-      inMonth.flatMap((e) => e.tags.map((tag) => ({ tag, total: e.total }))),
+      inMonth.flatMap((e) => e.tags.map((tag) => ({ tag, total: e.spent }))),
       (x) => x.tag,
       (x) => x.total,
     ),
@@ -479,8 +510,10 @@ export function HistoryClient() {
                 onPin={handlePin}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
+                onSplit={(entry) => void openSplit(entry.id)}
               />
               <div className="space-y-4">
+                <FriendsCard entries={entries} currency={currency} onMarkPaid={(id, person) => void markPaid(id, person)} />
                 <WarrantyTracker entries={entries} today={today} />
                 <RecurringCard today={today} currency={currency} />
                 <TaxReliefCard entries={entries} currency={currency} year={today.slice(0, 4)} />

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
+import { Bookmark, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
@@ -21,7 +21,9 @@ import { MerchantInput, PhotoField, TagsInput } from "@/components/receipt/edito
 import { usedValues } from "@/lib/memory/merchants";
 import { COMMON_WALLETS } from "@/lib/quick-add/keywords";
 import { useT, type MessageKey } from "@/lib/i18n/messages";
+import { computeSplit } from "@/lib/split/calc";
 import { useActiveDraft, useReceiptStore } from "@/lib/store/receipt-store";
+import { useUiStore } from "@/lib/store/ui-store";
 import { computeTotals, currencyDecimals, formatAmount } from "@/lib/utils/currency";
 import {
   CATEGORIES,
@@ -381,6 +383,8 @@ export function PaymentStep() {
         )}
       </dl>
 
+      <SplitButton />
+
       <Group title={t("section.records")}>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("field.category")} hint={t("hint.category")} fieldId="category">
@@ -438,6 +442,36 @@ export function PaymentStep() {
         </div>
       </Group>
     </div>
+  );
+}
+
+/** Opens the split-bill dialog; shows who still owes once split. */
+function SplitButton() {
+  const t = useT();
+  const draft = useActiveDraft();
+  const activeId = useReceiptStore((s) => s.activeId);
+  const open = useUiStore((s) => s.setSplitReceiptId);
+  if (!draft) return null;
+  const result = draft.split ? computeSplit(draft, draft.split) : null;
+  const unpaid = result?.people.filter((p) => !p.paid).length ?? 0;
+  return (
+    <button
+      type="button"
+      onClick={() => open(activeId)}
+      className="flex w-full items-center gap-3 rounded-xl p-3 text-left ring-1 ring-border transition-colors hover:bg-surface-muted"
+    >
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-viz-accent/15 text-viz-accent">
+        <Users className="size-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{result ? t("split.editButton") : t("split.button")}</span>
+        <span className="block truncate text-xs text-muted">
+          {result
+            ? t("split.status", { count: result.people.length, unpaid })
+            : t("split.buttonHint")}
+        </span>
+      </span>
+    </button>
   );
 }
 

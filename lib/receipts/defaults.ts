@@ -58,6 +58,7 @@ export function createBlankDraft(serial: string = newSerial()): ReceiptDraft {
     tags: [],
     taxRelief: "",
     hasPhoto: false,
+    split: null,
     items: [{ id: newId(), name: "", qty: 1, price: 0 }],
     styleConfig: DEFAULT_STYLE,
   };
