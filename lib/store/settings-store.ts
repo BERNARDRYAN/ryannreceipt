@@ -17,6 +17,7 @@ type SettingsStore = UserSettings & {
   markRuleRun: (id: string, date: string) => void;
   /** Remember people from split bills (most recent first, deduped by name). */
   rememberFriends: (people: { id: string; name: string }[]) => void;
+  forgetFriend: (name: string) => void;
   setPayInfo: (info: UserSettings["payInfo"]) => void;
   setHomeCurrency: (currency: Currency) => void;
   /** Adopt a newer copy from the cloud without bumping updatedAt. */
@@ -88,6 +89,11 @@ export const useSettingsStore = create<SettingsStore>()(
           const friends = [...incoming, ...s.friends.filter((f) => !names.has(f.name.toLowerCase()))].slice(0, 100);
           return { friends, updatedAt: nowIso() };
         }),
+      forgetFriend: (name) =>
+        set((s) => ({
+          friends: s.friends.filter((f) => f.name.toLowerCase() !== name.toLowerCase()),
+          updatedAt: nowIso(),
+        })),
       setPayInfo: (payInfo) => set({ payInfo, updatedAt: nowIso() }),
       setHomeCurrency: (homeCurrency) => set({ homeCurrency, updatedAt: nowIso() }),
       // Older settings documents lack newer fields; fill them from defaults.

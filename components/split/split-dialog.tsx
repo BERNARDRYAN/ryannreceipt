@@ -61,6 +61,7 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
   const receipt = useReceiptStore((s) => s.receipts[receiptId]);
   const patchDraft = useReceiptStore((s) => s.patchDraft);
   const friends = useSettingsStore((s) => s.friends);
+  const [forgotten, setForgotten] = useState<{ id: string; name: string } | null>(null);
   const payInfo = useSettingsStore((s) => s.payInfo);
   const rememberFriends = useSettingsStore((s) => s.rememberFriends);
   const [personName, setPersonName] = useState("");
@@ -203,16 +204,47 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
         {friendOptions.length > 0 && !personName && (
           <div className="flex flex-wrap gap-1.5">
             {friendOptions.slice(0, 8).map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                onClick={() => addPerson(f.value)}
-                className="rounded-full px-2.5 py-1 text-xs ring-1 ring-border hover:bg-surface-muted"
-              >
-                + {f.value}
-              </button>
+              <span key={f.value} className="inline-flex items-center rounded-full text-xs ring-1 ring-border">
+                <button
+                  type="button"
+                  onClick={() => addPerson(f.value)}
+                  className="rounded-l-full py-1 pr-1 pl-2.5 hover:bg-surface-muted"
+                >
+                  + {f.value}
+                </button>
+                {/* Forget a saved friend (with undo). */}
+                <button
+                  type="button"
+                  aria-label={t("split.forget", { name: f.value })}
+                  title={t("split.forget", { name: f.value })}
+                  onClick={() => {
+                    const saved = friends.find((x) => x.name.toLowerCase() === f.value.toLowerCase());
+                    useSettingsStore.getState().forgetFriend(f.value);
+                    if (saved) setForgotten(saved);
+                  }}
+                  className="rounded-r-full py-1 pr-2 pl-1 text-muted hover:bg-surface-muted hover:text-danger"
+                >
+                  <X className="size-3" aria-hidden />
+                </button>
+              </span>
             ))}
           </div>
+        )}
+        {/* Inline (not a toast): toasts sit behind this modal window. */}
+        {forgotten && (
+          <p role="status" className="flex items-center gap-2 text-xs text-muted">
+            {t("split.forgotten", { name: forgotten.name })}
+            <button
+              type="button"
+              onClick={() => {
+                useSettingsStore.getState().rememberFriends([forgotten]);
+                setForgotten(null);
+              }}
+              className="font-semibold text-foreground underline-offset-2 hover:underline"
+            >
+              {t("common.undo")}
+            </button>
+          </p>
         )}
         <label className="flex items-center gap-2 text-sm">
           <span className="shrink-0 whitespace-nowrap text-muted">{t("split.paidBy")}</span>

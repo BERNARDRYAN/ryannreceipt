@@ -1,9 +1,9 @@
 "use client";
 
-import { Camera, ChevronDown, Flame, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
+import { Camera, ChevronDown, Flame, X, Landmark, Repeat, ShieldCheck, TrendingDown, TrendingUp, Users, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { AppHeader } from "@/components/app-header";
 import { Breakdown, type BreakdownMode } from "@/components/history/breakdown";
@@ -354,6 +354,30 @@ export function HistoryClient() {
   };
   const show = (key: string) => hasData[key] || openedTools.has(key);
   const openTool = (key: string) => setOpenedTools((prev) => new Set(prev).add(key));
+  const closeTool = (key: string) =>
+    setOpenedTools((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  // A tool opened from "More tools" that is still empty can be folded back.
+  const closable = (key: string, card: ReactNode) =>
+    hasData[key] ? (
+      card
+    ) : (
+      <div className="relative">
+        {card}
+        <button
+          type="button"
+          onClick={() => closeTool(key)}
+          aria-label={t("tools.close")}
+          title={t("tools.close")}
+          className="absolute -top-2 -right-2 flex size-7 items-center justify-center rounded-full bg-surface text-muted shadow-sm ring-1 ring-border hover:text-foreground"
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      </div>
+    );
   const latest = entries?.length ? sortEntries(entries.filter((e) => !e.isPinned)).at(0) ?? entries[0] : undefined;
   const foldedTools: Tool[] = (
     [
@@ -614,12 +638,14 @@ export function HistoryClient() {
                 onSplit={(entry) => void openSplit(entry.id)}
               />
               <div className="space-y-4">
-                {show("friends") && (
-                  <FriendsCard entries={entries} currency={currency} onMarkPaid={(id, person) => void markPaid(id, person)} />
-                )}
-                {show("warranty") && <WarrantyTracker entries={entries} today={today} />}
-                {show("recurring") && <RecurringCard today={today} currency={currency} />}
-                {show("tax") && <TaxReliefCard entries={inCurrency} currency={currency} year={today.slice(0, 4)} />}
+                {show("friends") &&
+                  closable(
+                    "friends",
+                    <FriendsCard entries={entries} currency={currency} onMarkPaid={(id, person) => void markPaid(id, person)} />,
+                  )}
+                {show("warranty") && closable("warranty", <WarrantyTracker entries={entries} today={today} />)}
+                {show("recurring") && closable("recurring", <RecurringCard today={today} currency={currency} />)}
+                {show("tax") && closable("tax", <TaxReliefCard entries={inCurrency} currency={currency} year={today.slice(0, 4)} />)}
                 <MoreTools tools={foldedTools} />
               </div>
             </div>

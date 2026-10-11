@@ -602,3 +602,12 @@ dialog.sheet[open] {
     animation: none !important;
   }
 }
+
+/* iPhone Safari zooms the whole page into any field whose text is under 16px
+ * (and stays zoomed, pushing sheets off-screen). Touch screens get 16px+. */
+@media (pointer: coarse) {
+  /* Only the small sizes are bumped; big fields (e.g. the amount) keep theirs. */
+  :is(input, select, textarea):is(.text-xs, .text-sm, [class*="text-[1"]) {
+    font-size: 16px;
+  }
+}

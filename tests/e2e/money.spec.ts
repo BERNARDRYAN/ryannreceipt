@@ -167,3 +167,43 @@ test("@mobile swipe a row right to split, left to delete", async ({ page }) => {
   await expect(page.getByText(/^Deleted/)).toBeVisible();
   await expect(page.getByRole("link", { name: /Ryann Kopitiam/ })).toHaveCount(0);
 });
+
+test("saved friends can be forgotten (with undo)", async ({ page }) => {
+  await page.goto("/history");
+  await quickAdd(page, "dinner 30.00 card");
+  await page.getByRole("button", { name: /^Actions for Dinner/ }).click();
+  await page.getByRole("button", { name: "Split bill with friends" }).click();
+  const dialog = page.getByRole("dialog", { name: "Split the bill" });
+  await dialog.getByPlaceholder("Name, e.g. Ali").fill("Akao");
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await dialog.getByRole("button", { name: "Remove Akao" }).click();
+
+  // Akao is now a saved suggestion; forget it.
+  await expect(dialog.getByRole("button", { name: "+ Akao" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Forget Akao" }).click();
+  await expect(dialog.getByRole("button", { name: "+ Akao" })).toHaveCount(0);
+  await dialog.getByRole("status").getByRole("button", { name: "Undo" }).click();
+  await expect(dialog.getByRole("button", { name: "+ Akao" })).toBeVisible();
+});
+
+test("add a warranty from Home in a few taps; empty tools fold back", async ({ page }) => {
+  await page.goto("/history");
+  await quickAdd(page, "laptop 3999 card");
+
+  await page.getByRole("button", { name: /^Warranty tracker/ }).click();
+  const tracker = page.locator("section", { has: page.getByRole("heading", { name: "Warranty tracker" }) });
+  await tracker.getByRole("button", { name: "Add", exact: true }).click();
+  const laptop = await tracker.locator("option", { hasText: "Laptop" }).getAttribute("value");
+  await tracker.getByLabel("Which purchase?").selectOption(laptop!);
+  await tracker.getByRole("button", { name: "2 years" }).click();
+  await tracker.getByRole("button", { name: "Save warranty" }).click();
+  await expect(page.getByText(/Warranty for Laptop saved until/)).toBeVisible();
+  await expect(tracker.getByText(/\d+ days left/)).toBeVisible();
+
+  // An empty tool opened from More tools can be folded back.
+  await page.getByRole("button", { name: /^Recurring/ }).click();
+  await expect(page.getByRole("heading", { name: "Recurring" })).toBeVisible();
+  await page.getByRole("button", { name: "Fold back into More tools" }).click();
+  await expect(page.getByRole("heading", { name: "Recurring" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Recurring/ })).toBeVisible();
+});
