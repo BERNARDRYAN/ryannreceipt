@@ -4,6 +4,7 @@ import { Check, Copy, Download, Equal, MessageCircle, Minus, Plus, Share2, Trash
 import { useMemo, useRef, useState } from "react";
 
 import { ReceiptCanvas } from "@/components/receipt/receipt-canvas";
+import { AddDishRow, ChargesRow } from "@/components/split/bill-inputs";
 import { inputClass } from "@/components/receipt/editor/fields";
 import { Combobox } from "@/components/ui/combobox";
 import { buttonStyles, Dialog } from "@/components/ui/dialog";
@@ -16,7 +17,7 @@ import { useSettingsStore } from "@/lib/store/settings-store";
 import { toast } from "@/lib/store/toast-store";
 import { useUiStore } from "@/lib/store/ui-store";
 import { pushReceipts } from "@/lib/sync/cloud";
-import { formatAmount, lineTotal } from "@/lib/utils/currency";
+import { computeTotals, formatAmount, lineTotal } from "@/lib/utils/currency";
 import { canShareFiles, downloadNodeAsPng, exportBasename, shareNodeAsImage } from "@/lib/utils/export-canvas";
 import { ME, type ReceiptDraft, type Split } from "@/lib/validators/receipt-schema";
 
@@ -112,6 +113,36 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
     if (units <= 0) delete current[personId];
     else current[personId] = units;
     update({ ...split, shares: { ...split.shares, [itemId]: current } });
+  }
+
+  // A quick expense is one line named after the shop. Entering dishes replaces it.
+  const first = draft.items[0];
+  const placeholder =
+    draft.items.length === 1 &&
+    !!first &&
+    Object.keys(split.shares[first.id] ?? {}).length === 0 &&
+    (!draft.merchantName.trim() || first.name.trim().toLowerCase() === draft.merchantName.trim().toLowerCase());
+
+  /** Add what someone had (or a shared dish for everyone). */
+  function addDish(who: string, what: string, price: number) {
+    const person = split.people.find((p) => p.id === who);
+    const item = {
+      id: crypto.randomUUID(),
+      name: (what.trim() || (person ? name(person.id, person.name) : t("split.shared"))).slice(0, 80),
+      qty: 1,
+      price,
+    };
+    const shares = { ...split.shares };
+    if (placeholder) delete shares[first.id];
+    shares[item.id] = who === "all" ? Object.fromEntries(split.people.map((p) => [p.id, 1])) : { [who]: 1 };
+    patchDraft(receiptId, { items: [...(placeholder ? [] : draft!.items), item], split: { ...split, shares } });
+  }
+
+  function removeItem(id: string) {
+    if (draft!.items.length <= 1) return;
+    const shares = { ...split.shares };
+    delete shares[id];
+    patchDraft(receiptId, { items: draft!.items.filter((i) => i.id !== id), split: { ...split, shares } });
   }
 
   function togglePaid(personId: string) {
@@ -275,6 +306,11 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
             {t("split.equally")}
           </button>
         </div>
+        {placeholder && (
+          <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs leading-relaxed text-muted">
+            {t("split.enterDishes", { total: money(computeTotals(draft).payable) })}
+          </p>
+        )}
         <ul className="max-h-72 space-y-2 overflow-y-auto p-0.5 pr-1">
           {draft.items
             .filter((item) => item.name.trim() || item.price > 0)
@@ -292,7 +328,20 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
                       {item.qty > 1 && <span className="text-muted">{item.qty}× </span>}
                       {item.name || t("list.untitled")}
                     </span>
-                    <span className="shrink-0 tabular-nums">{formatAmount(lineTotal(item, draft.currency), draft.currency)}</span>
+                    <span className="flex shrink-0 items-center gap-1 tabular-nums">
+                      {formatAmount(lineTotal(item, draft.currency), draft.currency)}
+                      {draft.items.length > 1 && (
+                        <button
+                          type="button"
+                          aria-label={t("split.removeDish", { name: item.name || t("list.untitled") })}
+                          title={t("split.removeDish", { name: item.name || t("list.untitled") })}
+                          onClick={() => removeItem(item.id)}
+                          className="rounded p-0.5 text-muted hover:bg-surface-muted hover:text-danger"
+                        >
+                          <X className="size-3.5" aria-hidden />
+                        </button>
+                      )}
+                    </span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {split.people.map((p, i) => {
@@ -340,10 +389,25 @@ function SplitEditor({ receiptId, onClose }: { receiptId: string; onClose: () =>
               );
             })}
         </ul>
-        {result.unassigned.length > 0 && (
+        {result.unassigned.length > 0 && !placeholder && (
           <p className="text-xs text-warning">{t("split.unassigned", { count: result.unassigned.length, name: name(payer.id, payer.name) })}</p>
         )}
+        <AddDishRow
+          key={split.people.length}
+          people={split.people.map((p) => ({ id: p.id, label: name(p.id, p.name) }))}
+          currency={draft.currency}
+          onAdd={addDish}
+        />
       </section>
+
+      {/* Service charge and tax, shared by what each person had. */}
+      <ChargesRow
+        service={draft.serviceChargeRate}
+        tax={draft.taxRate}
+        total={computeTotals(draft).payable}
+        currency={draft.currency}
+        onChange={(patch) => patchDraft(receiptId, patch)}
+      />
 
       {/* Totals */}
       <section className="space-y-2">

@@ -272,3 +272,39 @@ test("income shows what's left to spend this month", async ({ page }) => {
   await page.getByRole("button", { name: "Remove Salary" }).click();
   await expect(page.getByText(/^Left to spend in/)).toHaveCount(0);
 });
+
+test("split a quick expense by what each person had, with service charge and SST", async ({ page }) => {
+  await page.goto("/history");
+  await quickAdd(page, "kopitiam 50 cash");
+  await page.getByRole("button", { name: /^Actions for Kopitiam/ }).click();
+  await page.getByRole("button", { name: "Split bill with friends" }).click();
+  const dialog = page.getByRole("dialog", { name: "Split the bill" });
+  await dialog.getByPlaceholder("Name, e.g. Ali").fill("Ali");
+  await dialog.getByRole("button", { name: "Add", exact: true }).first().click();
+  await expect(dialog.getByText(/This expense is one amount \(MYR 50\.00\)/)).toBeVisible();
+
+  const who = dialog.getByLabel("Who had it");
+  const price = dialog.getByLabel("Price");
+  const add = dialog.locator("form", { has: page.getByLabel("Who had it") }).getByRole("button", { name: "Add" });
+  await who.selectOption({ label: "Ali" });
+  await price.fill("12.50");
+  await add.click();
+  await who.selectOption({ label: "Me" });
+  await price.fill("15");
+  await add.click();
+  await who.selectOption({ label: "Everyone (shared)" });
+  await dialog.getByLabel("What (optional)").fill("Teh pot");
+  await price.fill("8");
+  await add.click();
+
+  await dialog.getByRole("button", { name: "10%" }).click();
+  await dialog.getByRole("button", { name: "SST 6%" }).click();
+
+  // Ali: 12.50 + 4.00 shared = 16.50, +10% = 18.15, +6% = 19.24. Bill 41.39, so me 22.15.
+  await expect(dialog.getByText("MYR 41.39")).toBeVisible();
+  const ali = dialog.locator("li", { hasText: "Ali" }).filter({ hasText: "MYR 19.24" });
+  await expect(ali).toHaveCount(1);
+  await expect(dialog.locator("li", { hasText: "paid the bill" }).filter({ hasText: "MYR 22.15" })).toHaveCount(1);
+  await ali.getByRole("button", { name: "Mark paid" }).click();
+  await expect(ali.getByRole("button", { name: "Paid" })).toBeVisible();
+});
