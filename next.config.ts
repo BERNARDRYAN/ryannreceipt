@@ -45,8 +45,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Cache Components is off: on Cloudflare Workers its timer-based render
+  // stages never finish ("Worker's code had hung"). Nothing here uses
+  // "use cache"; pages render on demand and data lives in the browser.
+  cacheComponents: false,
   poweredByHeader: false,
   turbopack: {
     rules: {
