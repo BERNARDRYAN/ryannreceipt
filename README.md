@@ -50,6 +50,19 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **Smart auto-fill**: shop names suggest past visits and fill address, category, wallet and tax;
   item names suggest last prices.
 - **Reminders** (bell): warranties ending, budget at 80%+, recurring payments due, evening nudge.
+- **Split bill**: tap who had each dish; service charge, tax and discounts are shared pro rata and the
+  payer absorbs rounding. Mark who has paid back, send the breakdown on WhatsApp (with your DuitNow /
+  bank details from Settings → Payment details). History counts only your share; the Friends card shows
+  who owes whom.
+- **Travel mode**: pick a home currency in History; foreign receipts are converted at the latest ECB
+  rates (Frankfurter, free, proxied via `/api/fx`).
+- **App lock** (Settings → App lock): PIN, optionally fingerprint / face (WebAuthn). A privacy screen
+  for this device, not encryption.
+- **Share link** (signed in): a view-only `/r/<token>` page without split, wallet, tags or photo;
+  revocable any time.
+- **Import CSV**: bank / e-wallet statements, parsed on the device. Only money out is imported and
+  re-importing the same file never duplicates.
+- **Year review**: a receipt-style summary of the year, shareable as an image.
 
 ## Architecture
 
@@ -62,10 +75,12 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **BFF.** `/api/receipts`, `/api/receipts/[id]`, `/api/presets`, `/api/account`:
   same-origin check on writes, rate limits, Zod validation, totals recomputed
   server-side, RLS as the final boundary.
-- **Synced settings** (budgets, recurring rules) live in `receipt_settings`; receipt photos in the
+- **Synced settings** (budgets, recurring rules, friends, payment details, home currency) live in `receipt_settings`; receipt photos in the
   private `receipt-photos` Storage bucket (`<user id>/<receipt id>.jpg`), both behind RLS.
 - **Account data deletion** removes RyannReceipt rows, settings and photos only. The Supabase auth user
   is shared with RyannPace/RyannPlan and is never deleted from here.
+- **Share links** live in `receipt_shares` (owner-only RLS); the public page reads one row through the
+  `get_receipt_share(token)` security-definer function, so links can't be listed or guessed.
 - **Offline.** `public/sw.js` caches the app shell and static assets; `/api` is never cached.
 - **i18n.** `lib/i18n/{en,zh,ms}.ts`; English is the source of truth and the other
   dictionaries are type-checked for missing keys. Printed receipt labels stay English.

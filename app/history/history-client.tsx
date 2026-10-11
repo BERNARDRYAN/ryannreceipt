@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText } from "lucide-react";
+import { Camera, CloudUpload, FileDown, Globe, HardDrive, LoaderCircle, Plus, ReceiptText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -11,6 +11,7 @@ import { BudgetsDialog } from "@/components/history/budgets-dialog";
 import { SpendingCalendar } from "@/components/history/calendar";
 import { MonthlyChart, StatTile, useMonthLabel } from "@/components/history/charts";
 import { FriendsCard } from "@/components/history/owed";
+import { YearReviewDialog } from "@/components/history/year-review";
 import { ReceiptList, type ListFilters } from "@/components/history/receipt-list";
 import { RecurringCard } from "@/components/history/recurring";
 import { TaxReliefCard } from "@/components/history/tax-relief";
@@ -399,6 +400,17 @@ export function HistoryClient() {
                 <span className="hidden sm:inline">{t("report.button")}</span>
               </button>
             )}
+            {entries && entries.length > 0 && (
+              <button
+                type="button"
+                onClick={() => useUiStore.getState().setReviewYear(today.slice(0, 4))}
+                title={t("review.title")}
+                className={buttonStyles.secondary}
+              >
+                <Sparkles className="size-4" aria-hidden />
+                <span className="hidden sm:inline">{t("review.button")}</span>
+              </button>
+            )}
             <Link href="/studio" className={buttonStyles.primary}>
               <Plus className="size-4" aria-hidden />
               {t("studio.newReceipt")}
@@ -536,6 +548,7 @@ export function HistoryClient() {
         )}
       </main>
       <BudgetsDialog currency={currency} open={budgetOpen} onClose={() => setBudgetOpen(false)} />
+      {hydrated && <YearReviewDialog entries={inCurrency} currency={currency} today={today} />}
     </div>
   );
 }
