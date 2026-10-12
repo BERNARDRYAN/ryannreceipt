@@ -39,6 +39,16 @@ const toNumber = (s: string) => {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+/**
+ * Shop names on Malaysian receipts are often the registered company:
+ * "KKV Business Management SDN.BHD (123456-X)". Keep the part before the
+ * legal suffix; if that leaves nothing, keep the line as it was.
+ */
+export function stripCompanySuffix(line: string) {
+  const cut = line.split(/\(m\)|\b(?:sdn\.?\s*bhd|bhd|berhad|plt)\b/i)[0].replace(/[\s.,(-]+$/, "").trim();
+  return cut.length >= 2 ? cut : line.trim();
+}
+
 function titleCase(s: string) {
   return /[a-z]/.test(s) ? s : smartTitle(s);
 }
@@ -82,7 +92,7 @@ export function parseReceiptText(raw: string): ScannedReceipt {
 
   // Merchant: the first prominent text line near the top.
   const merchantIndex = lines.slice(0, 6).findIndex((l) => /\p{L}{3,}/u.test(l) && !HEADER_NOISE.test(l));
-  const merchantName = merchantIndex >= 0 ? titleCase(lines[merchantIndex]) : "";
+  const merchantName = merchantIndex >= 0 ? titleCase(stripCompanySuffix(lines[merchantIndex])) : "";
 
   const addressLines = lines
     .slice(Math.max(0, merchantIndex + 1), merchantIndex + 5)

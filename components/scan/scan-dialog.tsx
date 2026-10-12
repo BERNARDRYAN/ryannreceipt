@@ -113,7 +113,8 @@ function Scanner({ initialFile, onDone }: { initialFile: File | null; onDone: ()
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
-  async function create(review: Review) {
+  /** Save the expense; `open` also takes you to the receipt maker. */
+  async function create(review: Review, open = false) {
     setSaving(true);
     const draft: ReceiptDraft = {
       ...createBlankDraft(),
@@ -149,8 +150,12 @@ function Scanner({ initialFile, onDone }: { initialFile: File | null; onDone: ()
       setSaving(false);
     }
     if (id) {
-      toast(t("scan.created"), { tone: "success" });
-      router.push(`/studio?id=${id}`);
+      if (open) router.push(`/studio?id=${id}`);
+      else
+        toast(t("scan.added", { name: draft.merchantName || t("scan.purchase") }), {
+          tone: "success",
+          action: { label: t("quick.open"), onClick: () => router.push(`/studio?id=${id}`) },
+        });
     }
     onDone();
   }
@@ -375,10 +380,16 @@ function Scanner({ initialFile, onDone }: { initialFile: File | null; onDone: ()
           <RotateCcw className="size-4" aria-hidden />
           {t("scan.rescan")}
         </button>
-        <button type="button" onClick={() => void create(review)} className={buttonStyles.primary} disabled={saving}>
-          {saving ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <ScanText className="size-4" aria-hidden />}
-          {t("scan.create")}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => void create(review, true)} className={buttonStyles.secondary} disabled={saving}>
+            <ScanText className="size-4" aria-hidden />
+            {t("scan.editAsReceipt")}
+          </button>
+          <button type="button" onClick={() => void create(review)} className={buttonStyles.primary} disabled={saving}>
+            {saving && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
+            {t("scan.addExpense")}
+          </button>
+        </div>
       </div>
     </div>
   );

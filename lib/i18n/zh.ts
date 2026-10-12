@@ -723,4 +723,7 @@ export const zh: Messages = {
   "split.otherPct": "其他",
   "split.billTotal": "账单总额（请核对收据）",
   "split.addDishLabel": "加入账单",
+  "scan.addExpense": "记为开销",
+  "scan.editAsReceipt": "编辑成收据",
+  "scan.added": "已从照片添加 {name}",
 };

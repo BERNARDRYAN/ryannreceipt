@@ -724,4 +724,7 @@ export const ms: Messages = {
   "split.otherPct": "lain",
   "split.billTotal": "Jumlah bil (semak sama dengan resit)",
   "split.addDishLabel": "Tambah ke bil",
+  "scan.addExpense": "Tambah perbelanjaan",
+  "scan.editAsReceipt": "Sunting sebagai resit",
+  "scan.added": "{name} ditambah daripada foto",
 };

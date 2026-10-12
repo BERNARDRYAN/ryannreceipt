@@ -27,7 +27,7 @@ function TemplateGrid({ onChoose }: { onChoose: (template: ReceiptTemplate) => v
   const t = useT();
   const [previews] = useState(() => new Map<string, ReceiptDraft>(TEMPLATES.map((tpl) => [tpl.id, tpl.build()])));
   return (
-    <ul className="grid max-h-[60dvh] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3">
+    <ul className="grid max-h-[60dvh] grid-cols-2 gap-3 overflow-y-auto p-1 sm:grid-cols-3">
       {TEMPLATES.map((template) => (
         <li key={template.id}>
           <button

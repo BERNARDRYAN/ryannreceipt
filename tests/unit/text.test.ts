@@ -19,3 +19,14 @@ describe("smartTitle", () => {
     expect(smartTitle("7-eleven")).toBe("7-eleven");
   });
 });
+
+describe("stripCompanySuffix", () => {
+  it("keeps the brand before a company suffix", async () => {
+    const { stripCompanySuffix } = await import("@/lib/scan/parse-receipt");
+    expect(stripCompanySuffix("KKV Business Managenent SDN.BHD Be")).toBe("KKV Business Managenent");
+    expect(stripCompanySuffix("MR DIY (M) SDN BHD (1234-X)")).toBe("MR DIY");
+    expect(stripCompanySuffix("AEON CO. (M) BHD")).toBe("AEON CO");
+    expect(stripCompanySuffix("Jaya Grocer")).toBe("Jaya Grocer");
+    expect(stripCompanySuffix("SDN BHD")).toBe("SDN BHD");
+  });
+});

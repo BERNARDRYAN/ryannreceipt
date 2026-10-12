@@ -95,6 +95,7 @@ export function ItemsEditor() {
         {items.map((item, index) => (
           <li
             key={item.id}
+            data-item-index={index}
             onDragOver={(e) => {
               if (dragFrom === null) return;
               e.preventDefault();
@@ -124,6 +125,29 @@ export function ItemsEditor() {
                 setDragOver(null);
               }}
               onKeyDown={(e) => handleGripKey(e, index)}
+              // Touch screens have no drag-and-drop: follow the finger instead.
+              onPointerDown={(e) => {
+                if (e.pointerType === "mouse") return;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setDragFrom(index);
+                setDragOver(index);
+              }}
+              onPointerMove={(e) => {
+                if (e.pointerType === "mouse" || dragFrom === null) return;
+                const row = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-item-index]");
+                if (row) setDragOver(Number(row.dataset.itemIndex));
+              }}
+              onPointerUp={(e) => {
+                if (e.pointerType === "mouse") return;
+                if (dragFrom !== null && dragOver !== null && dragOver !== dragFrom) moveItem(dragFrom, dragOver);
+                setDragFrom(null);
+                setDragOver(null);
+              }}
+              onPointerCancel={() => {
+                setDragFrom(null);
+                setDragOver(null);
+              }}
+              style={{ touchAction: "none" }}
               aria-label={`Reorder ${item.name || `item ${index + 1}`}. Use arrow keys to move.`}
               className="flex h-9 cursor-grab items-center justify-center rounded text-muted hover:text-foreground active:cursor-grabbing"
             >

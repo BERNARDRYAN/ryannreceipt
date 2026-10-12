@@ -744,4 +744,7 @@ export const en = {
   "split.otherPct": "other",
   "split.billTotal": "Bill total (check it matches the receipt)",
   "split.addDishLabel": "Add to the bill",
+  "scan.addExpense": "Add expense",
+  "scan.editAsReceipt": "Edit as receipt",
+  "scan.added": "Added {name} from your photo",
 } as const;

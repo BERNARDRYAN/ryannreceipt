@@ -96,8 +96,10 @@ test("scanning a receipt photo creates a receipt (on-device OCR)", async ({ page
   await page.getByRole("dialog").last().locator("input[type=file]:not([capture])").setInputFiles(photo);
   await expect(page.getByText("Check the details below")).toBeVisible({ timeout: 90_000 });
   await expect(page.getByLabel("Store name").last()).toHaveValue(/Kopitiam/i);
-  await page.getByRole("button", { name: "Create receipt" }).click();
-  await expect(page.getByText("Receipt created from your photo")).toBeVisible();
+  // One tap saves the expense; "Open" (or "Edit as receipt") shows the items.
+  await page.getByRole("button", { name: "Add expense" }).click();
+  await expect(page.getByText(/^Added .*Kopitiam from your photo/i)).toBeVisible();
+  await page.getByRole("status").getByRole("button", { name: "Open" }).click();
   await expect(paper(page)).toContainText(/nasi lemak/i);
 });
 

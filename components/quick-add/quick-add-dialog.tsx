@@ -250,7 +250,7 @@ function QuickAddForm({ onDone, edit: target }: { onDone: () => void; edit?: Edi
           aria-label={t("field.currency")}
           value={currency}
           onChange={(e) => setCurrencyChoice(e.target.value as Currency)}
-          className="rounded-md border-0 bg-transparent p-1 text-sm font-semibold text-muted"
+          className="min-w-[4.75rem] shrink-0 rounded-md border-0 bg-transparent p-1 text-sm font-semibold text-muted"
         >
           {CURRENCIES.map((c) => (
             <option key={c}>{c}</option>
@@ -515,7 +515,7 @@ function IncomeForm({ onDone }: { onDone: () => void }) {
           aria-label={t("field.currency")}
           value={currency}
           onChange={(e) => setCurrency(e.target.value as Currency)}
-          className="rounded-md border-0 bg-transparent p-1 text-sm font-semibold text-muted"
+          className="min-w-[4.75rem] shrink-0 rounded-md border-0 bg-transparent p-1 text-sm font-semibold text-muted"
         >
           {CURRENCIES.map((c) => (
             <option key={c}>{c}</option>
