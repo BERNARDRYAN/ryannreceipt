@@ -680,7 +680,7 @@ export function HistoryClient() {
 
             <RepeatSuggestions entries={entries} today={today} />
 
-            <div className="grid items-start gap-4 lg:grid-cols-[1fr_22rem]">
+            <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
               <ReceiptList
                 convertTo={hasForeign ? (e) => (e.currency === currency ? null : convert(e.spent, e.currency, currency, fx)) : undefined}
                 homeCurrency={currency}
@@ -731,7 +731,7 @@ export function HistoryClient() {
                   {reportButton}
                   {reviewButton}
                 </div>
-              <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
                 <MonthlyChart data={monthData} currency={currency} selected={selectedMonth} onSelect={selectMonth} />
                 <SpendingCalendar
                   month={selectedMonth}

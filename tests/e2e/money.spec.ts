@@ -308,3 +308,18 @@ test("split a quick expense by what each person had, with service charge and SST
   await ali.getByRole("button", { name: "Mark paid" }).click();
   await expect(ali.getByRole("button", { name: "Paid" })).toBeVisible();
 });
+
+test("@mobile a very long shop name never makes the page scroll sideways", async ({ page }) => {
+  await page.goto("/history");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Add spending" }).click();
+  await page.getByLabel("Amount", { exact: true }).fill("48.50");
+  await page.getByLabel("Expense", { exact: true }).fill("KKV Business Management SDN.BHD Kuala Lumpur Branch Outlet");
+  await addButton(page).click();
+  await expect(page.getByRole("link", { name: /KKV/ })).toBeVisible();
+  const { scroll, width } = await page.evaluate(() => ({
+    scroll: document.documentElement.scrollWidth,
+    width: document.documentElement.clientWidth,
+  }));
+  expect(scroll).toBeLessThanOrEqual(width);
+});

@@ -638,3 +638,9 @@ input[type="date"]::-webkit-date-and-time-value,
 input[type="datetime-local"]::-webkit-date-and-time-value {
   text-align: left;
 }
+
+/* Nothing should make the page scroll sideways (clip keeps sticky headers working). */
+html,
+body {
+  overflow-x: clip;
+}

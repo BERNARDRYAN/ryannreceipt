@@ -120,7 +120,7 @@ export function GoogleAuthButton() {
         </span>
       )}
       {/* Fixed height keeps the header steady while Google renders its iframe. */}
-      <div ref={containerRef} className="flex h-8 min-w-8 items-center sm:min-w-22" />
+      <div ref={containerRef} className="flex h-8 min-w-8 items-center overflow-hidden sm:min-w-22" />
     </div>
   );
 }
