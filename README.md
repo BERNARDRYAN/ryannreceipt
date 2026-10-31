@@ -1,8 +1,43 @@
 # RyannReceipt
 
-Retro thermal-receipt generator and expense & warranty tracker, part of the Ryann Suite.
-Full-stack Next.js 16 (App Router); route handlers under `app/api` are the BFF.
-Deployed to Cloudflare Workers via OpenNext.
+**Track spending fast, and print a retro receipt any time.**
+A local-first expense tracker that also turns any purchase into a printed-style thermal receipt.
+Works without an account; sign in with Google to back up and sync across devices.
+
+**Live:** https://ryannreceipt.ryannsuite.workers.dev/ · Part of [RyannSuite](https://ryannsuite.pages.dev)
+
+![RyannReceipt: retro thermal receipts, expenses and warranty reminders](app/opengraph-image.png)
+
+## Highlights
+
+- **Quick add** understands a whole note like `nasi lemak 12.90 tng yesterday #work`.
+- **Scan a receipt** with on-device OCR (Tesseract.js); photos aren't uploaded unless you keep them.
+- **Split bills** per dish, with service charge and tax shared pro rata, and send the breakdown on WhatsApp.
+- Budgets, warranties, recurring bills, travel mode with currency conversion, CSV import and PDF reports.
+- English, 中文 and Bahasa Melayu. Installable, and works offline.
+
+## How it's built
+
+| Layer | Tech |
+|---|---|
+| App | Next.js 16 (App Router), React 19, TypeScript, Zustand, Zod |
+| API | Route handlers in `app/api` as a backend-for-frontend |
+| Data & auth | Supabase (Postgres with row-level security, Storage), Google Identity Services |
+| Other | Tesseract.js (OCR), jsPDF, service worker for offline |
+| Hosting | Cloudflare Workers via OpenNext, within the free plan's 3 MiB limit |
+| Quality | Vitest, Playwright with an axe accessibility scan, GitHub Actions CI |
+
+**Engineering notes:**
+- **Local-first.** Data lives in the browser first, and cloud sync is opt-in.
+- **Guarded writes.** Every write passes same-origin checks, rate limits and Zod validation; totals are recomputed on the server; row-level security is the final boundary.
+- **Shareable links can't be guessed.** They're served through a security-definer function, so links can't be listed.
+- **Type-checked translations.** The translation dictionaries are type-checked, so no key goes missing.
+
+See [Architecture](#architecture) below for the details.
+
+---
+
+Developer notes follow.
 
 ## Setup
 
@@ -119,4 +154,6 @@ Rate limiting uses Cloudflare's Rate Limiting bindings (`RL_AUTH`, `RL_WRITE`,
 - **i18n.** `lib/i18n/{en,zh,ms}.ts`; English is the source of truth and the other
   dictionaries are type-checked for missing keys. Printed receipt labels stay English.
 
-See `ryannreceipt_specification.md` for the original specification.
+---
+
+Built by [Bernard Ryan Sim](https://ryannsuite.pages.dev). © Bernard Ryan Sim. All rights reserved.
